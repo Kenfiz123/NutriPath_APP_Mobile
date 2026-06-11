@@ -15,9 +15,7 @@ class AppConfig {
 
   static String get apiBaseUrl {
     if (_definedBaseUrl.trim().isNotEmpty) return _definedBaseUrl.trim();
-    return defaultTargetPlatform == TargetPlatform.android
-        ? 'http://10.0.2.2:8080'
-        : 'http://127.0.0.1:8080';
+    return 'https://nutripath-l4rk.onrender.com';
   }
 }
 
@@ -74,7 +72,7 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw ApiException(
-        'Không kết nối được backend tại ${AppConfig.apiBaseUrl}. Hãy kiểm tra backend đã chạy và đúng port 8080.',
+        'Không kết nối được backend tại ${AppConfig.apiBaseUrl}. Hãy kiểm tra kết nối mạng của bạn.',
         code: 'network_error',
       );
     }
