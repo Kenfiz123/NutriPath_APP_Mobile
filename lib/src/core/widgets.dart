@@ -34,7 +34,7 @@ String readableError(Object error) {
       lower.contains('clientexception') ||
       lower.contains('connection refused') ||
       lower.contains('xmlhttprequest error')) {
-    return 'Không kết nối được backend. Hãy kiểm tra server đang chạy ở port 8080 rồi thử lại.';
+    return 'Không kết nối được backend. Hãy kiểm tra server hoặc kết nối mạng của bạn.';
   }
   if (lower.contains('formatexception')) {
     return 'Backend trả về dữ liệu không hợp lệ. Hãy kiểm tra log server.';
@@ -48,13 +48,22 @@ String readableError(Object error) {
 void showSnack(BuildContext context, String message) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+    ..showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
 }
 
 Color mealColor(String id) {
   return switch (id) {
     'breakfast' => NutriColors.amber,
-    'lunch' => NutriColors.primary,
+    'lunch' => NutriColors.emerald,
     'dinner' => NutriColors.blue,
     'snack' => NutriColors.purple,
     _ => NutriColors.teal,
@@ -65,7 +74,7 @@ class NutriPage extends StatelessWidget {
   const NutriPage({
     required this.children,
     this.padding = const EdgeInsets.all(NutriSpacing.page),
-    this.bottomPadding = 96,
+    this.bottomPadding = 110,
     super.key,
   });
 
@@ -86,20 +95,37 @@ class NutriPage extends StatelessWidget {
 }
 
 class NutriCard extends StatelessWidget {
-  const NutriCard({required this.child, this.padding, this.color, super.key});
+  const NutriCard({
+    required this.child,
+    this.padding,
+    this.color,
+    this.onTap,
+    super.key,
+  });
 
   final Widget child;
   final EdgeInsets? padding;
   final Color? color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    Widget content = Padding(
+      padding: padding ?? const EdgeInsets.all(NutriSpacing.lg),
+      child: child,
+    );
+
+    if (onTap != null) {
+      content = InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(NutriSpacing.radius),
+        child: content,
+      );
+    }
+
     return Card(
       color: color,
-      child: Padding(
-        padding: padding ?? const EdgeInsets.all(NutriSpacing.lg),
-        child: child,
-      ),
+      child: content,
     );
   }
 }
@@ -119,28 +145,38 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: theme.textTheme.titleLarge),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  subtitle!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
                   ),
                 ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        ...action == null ? const <Widget>[] : [action!],
-      ],
+          ...action == null ? const <Widget>[] : [action!],
+        ],
+      ),
     );
   }
 }
@@ -166,39 +202,51 @@ class MetricCard extends StatelessWidget {
     final theme = Theme.of(context);
     return NutriCard(
       padding: const EdgeInsets.all(NutriSpacing.md),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: accent),
-          ),
-          const SizedBox(width: NutriSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: theme.textTheme.labelMedium),
-                Text(
-                  value,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: accent, size: 18),
+              ),
+              const SizedBox(width: NutriSpacing.sm),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                if (caption != null)
-                  Text(
-                    caption!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: NutriSpacing.sm),
+          Text(
+            value,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
             ),
           ),
+          if (caption != null)
+            Text(
+              caption!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
         ],
       ),
     );
@@ -209,7 +257,7 @@ class ProgressLine extends StatelessWidget {
   const ProgressLine({
     required this.value,
     this.color = NutriColors.primary,
-    this.height = 9,
+    this.height = 10,
     super.key,
   });
 
@@ -225,7 +273,7 @@ class ProgressLine extends StatelessWidget {
       child: LinearProgressIndicator(
         minHeight: height,
         value: clamped,
-        backgroundColor: color.withValues(alpha: 0.14),
+        backgroundColor: color.withValues(alpha: 0.1),
         valueColor: AlwaysStoppedAnimation<Color>(color),
       ),
     );
@@ -245,17 +293,32 @@ class TierChip extends StatelessWidget {
       'vip' => NutriColors.emerald,
       _ => NutriColors.blue,
     };
-    return Chip(
-      visualDensity: VisualDensity.compact,
-      avatar: Icon(
-        normalized == 'svip' ? Icons.workspace_premium : Icons.verified_user,
-        size: 16,
-        color: color,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      label: Text(normalized.toUpperCase()),
-      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w800),
-      backgroundColor: color.withValues(alpha: 0.12),
-      side: BorderSide(color: color.withValues(alpha: 0.34)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            normalized == 'svip' ? Icons.workspace_premium : Icons.verified_user,
+            size: 14,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            normalized.toUpperCase(),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -271,31 +334,35 @@ class ErrorPanel extends StatelessWidget {
     return NutriCard(
       color: Theme.of(
         context,
-      ).colorScheme.errorContainer.withValues(alpha: 0.28),
+      ).colorScheme.errorContainer.withValues(alpha: 0.2),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.error_outline,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              const SizedBox(width: NutriSpacing.sm),
-              Expanded(
-                child: Text(
-                  readableError(error),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            ],
+          Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.error,
+            size: 40,
+          ),
+          const SizedBox(height: NutriSpacing.md),
+          Text(
+            'Đã xảy ra lỗi',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: NutriSpacing.xs),
+          Text(
+            readableError(error),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
           if (onRetry != null) ...[
-            const SizedBox(height: NutriSpacing.md),
-            OutlinedButton.icon(
+            const SizedBox(height: NutriSpacing.lg),
+            FilledButton.tonalIcon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('Thử lại'),
+              label: const Text('Thử lại ngay'),
             ),
           ],
         ],
@@ -321,25 +388,42 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return NutriCard(
-      child: Column(
-        children: [
-          Icon(icon, size: 36, color: theme.colorScheme.primary),
-          const SizedBox(height: NutriSpacing.sm),
-          Text(title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(NutriSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 48, color: theme.colorScheme.primary),
             ),
-          ),
-          if (action != null) ...[
-            const SizedBox(height: NutriSpacing.md),
-            action!,
+            const SizedBox(height: NutriSpacing.lg),
+            Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+            if (action != null) ...[
+              const SizedBox(height: NutriSpacing.xl),
+              action!,
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -355,12 +439,12 @@ class LoginPrompt extends StatelessWidget {
         EmptyState(
           title: 'Bạn cần đăng nhập',
           message:
-              'Đăng nhập để đồng bộ dashboard, bữa ăn, báo cáo và hội viên.',
-          icon: Icons.lock_outline,
+              'Đăng nhập để đồng bộ dashboard, bữa ăn, báo cáo và hội viên của bạn trên mọi thiết bị.',
+          icon: Icons.lock_person_outlined,
           action: FilledButton.icon(
             onPressed: () => context.go('/login'),
-            icon: const Icon(Icons.login),
-            label: const Text('Đăng nhập'),
+            icon: const Icon(Icons.login_rounded),
+            label: const Text('Đăng nhập ngay'),
           ),
         ),
       ],
@@ -377,22 +461,39 @@ class LockedPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return NutriCard(
-      color: NutriColors.amber.withValues(alpha: 0.1),
+      color: NutriColors.amber.withValues(alpha: 0.08),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.workspace_premium, color: NutriColors.amber),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: NutriColors.amber.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.workspace_premium, color: NutriColors.amber, size: 20),
+          ),
           const SizedBox(width: NutriSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: NutriColors.orange,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(message),
+                Text(
+                  message,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
               ],
             ),
           ),
+          const SizedBox(width: 8),
           TextButton(
             onPressed: () => context.go('/pricing'),
             child: const Text('Nâng cấp'),
@@ -404,23 +505,30 @@ class LockedPanel extends StatelessWidget {
 }
 
 class LoadingPanel extends StatelessWidget {
-  const LoadingPanel({this.message = 'Đang tải...', super.key});
+  const LoadingPanel({this.message = 'Đang tải dữ liệu...', super.key});
 
   final String message;
 
   @override
   Widget build(BuildContext context) {
-    return NutriCard(
-      child: Row(
-        children: [
-          const SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.4),
-          ),
-          const SizedBox(width: NutriSpacing.md),
-          Text(message),
-        ],
+    return Center(
+      child: NutriCard(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+            const SizedBox(width: NutriSpacing.lg),
+            Text(
+              message,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -441,15 +549,26 @@ class KeyValueLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           if (icon != null) ...[
             Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: NutriSpacing.sm),
           ],
-          Expanded(child: Text(label)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
         ],
       ),
     );
