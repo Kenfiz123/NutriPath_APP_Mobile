@@ -132,7 +132,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _formError;
   String _gender = 'female';
   String _activity = 'light';
-  String _goal = 'maintain';
+  final String _goal = 'maintain';
 
   @override
   void dispose() {
@@ -219,7 +219,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _gender,
+              initialValue: _gender,
               decoration: const InputDecoration(labelText: 'Giới tính'),
               items: const [
                 DropdownMenuItem(value: 'female', child: Text('Nữ')),
@@ -229,7 +229,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _activity,
+              initialValue: _activity,
               decoration: const InputDecoration(labelText: 'Mức vận động'),
               items: const [
                 DropdownMenuItem(value: 'sedentary', child: Text('Ít')),
@@ -323,13 +323,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  late Future<DashboardData> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = ref.read(apiClientProvider).getDashboard(date: localDateString());
-  }
+  Future<DashboardData>? _future;
 
   void _reload() => setState(() {
     _future = ref.read(apiClientProvider).getDashboard(date: localDateString());
@@ -339,11 +333,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
     if (!session.isLoggedIn) return const LoginPrompt();
+    final future = _future ??= ref
+        .read(apiClientProvider)
+        .getDashboard(date: localDateString());
 
     return RefreshIndicator(
       onRefresh: () async => _reload(),
       child: FutureBuilder<DashboardData>(
-        future: _future,
+        future: future,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return NutriPage(
@@ -866,8 +863,9 @@ class _WorkoutTracker extends ConsumerWidget {
                               .deleteWorkout(log.date, asString(workout['id']));
                           onUpdate();
                         } catch (e) {
-                          if (context.mounted)
+                          if (context.mounted) {
                             showSnack(context, readableError(e));
+                          }
                         }
                       },
                     ),
@@ -1151,6 +1149,15 @@ class _TextIconButton extends StatelessWidget {
 
 // --- AI CHAT SHEET ---
 
+Future<void> showChatSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => const ChatSheet(),
+  );
+}
+
 class ChatSheet extends ConsumerStatefulWidget {
   const ChatSheet({super.key});
 
@@ -1354,7 +1361,7 @@ class _QuickReplies extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: replies.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) => ActionChip(
           label: Text(replies[i]),
           onPressed: () => onSelect(replies[i]),
@@ -1558,8 +1565,9 @@ class _FoodPickerDialogState extends State<_FoodPickerDialog> {
               child: FutureBuilder<List<Food>>(
                 future: _future,
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData)
+                  if (!snapshot.hasData) {
                     return const CircularProgressIndicator();
+                  }
                   final foods = snapshot.data!;
                   return ListView.builder(
                     shrinkWrap: true,
@@ -1675,7 +1683,7 @@ class _WorkoutDialogState extends State<_WorkoutDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(labelText: 'Loại bài tập'),
               items: const [
                 DropdownMenuItem(value: 'walking', child: Text('Đi bộ')),
@@ -1706,7 +1714,7 @@ class _WorkoutDialogState extends State<_WorkoutDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _intensity,
+              initialValue: _intensity,
               decoration: const InputDecoration(labelText: 'Cường độ'),
               items: const [
                 DropdownMenuItem(value: 'light', child: Text('Nhẹ')),
@@ -1757,8 +1765,8 @@ class _WorkoutDialogState extends State<_WorkoutDialog> {
   }
 }
 
-// (Remaining screens like Pricing, Reports, Profile, Admin would be similarly overhauled
-// for brevity in this single edit block, focusing on core UX first)
+// Legacy screen implementations remain for compatibility with old imports.
+// The app router uses the Full* screens below.
 
 class CalculatorScreen extends ConsumerStatefulWidget {
   const CalculatorScreen({super.key});
@@ -1770,7 +1778,9 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
   final _age = TextEditingController(text: '25');
   final _weight = TextEditingController(text: '65');
   final _height = TextEditingController(text: '170');
-  String _gender = 'female', _activity = 'light', _goal = 'maintain';
+  String _gender = 'female';
+  final String _activity = 'light';
+  final String _goal = 'maintain';
   CalorieCalculation? _res;
 
   @override
@@ -1795,7 +1805,7 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _gender,
+                initialValue: _gender,
                 items: const [
                   DropdownMenuItem(value: 'female', child: Text('Nữ')),
                   DropdownMenuItem(value: 'male', child: Text('Nam')),
@@ -2237,7 +2247,7 @@ class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return const NutriPage(children: [Center(child: Text('Admin Dashboard'))]);
+    return const FullAdminScreen();
   }
 }
 
@@ -2293,7 +2303,7 @@ class _FullCalculatorScreenState extends ConsumerState<FullCalculatorScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _gender,
+                initialValue: _gender,
                 decoration: const InputDecoration(labelText: 'Giới tính'),
                 items: const [
                   DropdownMenuItem(value: 'female', child: Text('Nữ')),
@@ -2304,7 +2314,7 @@ class _FullCalculatorScreenState extends ConsumerState<FullCalculatorScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _activity,
+                initialValue: _activity,
                 decoration: const InputDecoration(labelText: 'Mức vận động'),
                 items: const [
                   DropdownMenuItem(
@@ -2320,7 +2330,7 @@ class _FullCalculatorScreenState extends ConsumerState<FullCalculatorScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _goal,
+                initialValue: _goal,
                 decoration: const InputDecoration(labelText: 'Mục tiêu'),
                 items: const [
                   DropdownMenuItem(value: 'lose', child: Text('Giảm cân')),
@@ -2337,7 +2347,7 @@ class _FullCalculatorScreenState extends ConsumerState<FullCalculatorScreen> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _exerciseType,
+                      initialValue: _exerciseType,
                       decoration: const InputDecoration(labelText: 'Bài tập'),
                       items: const [
                         DropdownMenuItem(
@@ -2456,7 +2466,7 @@ class _CalculatorResultCard extends StatelessWidget {
           ),
           KeyValueLine(
             label: 'BMI',
-            value: '${asDouble(r['bmi']).toStringAsFixed(1)}',
+            value: asDouble(r['bmi']).toStringAsFixed(1),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -2571,7 +2581,7 @@ class _FullRecipesScreenState extends ConsumerState<FullRecipesScreen> {
                             },
                           );
                         },
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
                         itemCount: tags.length,
                       ),
                     ),
@@ -2677,7 +2687,7 @@ class _RecipeHorizontalList extends StatelessWidget {
                 child: _RecipeListCard(recipe: recipe),
               );
             },
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemCount: recipes.length,
           ),
         ),
@@ -2909,6 +2919,7 @@ class _FullReportsScreenState extends ConsumerState<FullReportsScreen> {
       await Clipboard.setData(
         ClipboardData(text: 'Không thể xuất báo cáo: ${readableError(e)}'),
       );
+      if (!context.mounted) return;
       showSnack(context, readableError(e));
     }
   }
@@ -3586,7 +3597,7 @@ class _FullCheckoutScreenState extends ConsumerState<FullCheckoutScreen> {
                     },
                   ),
                   DropdownButtonFormField<String>(
-                    value: _paymentMethod,
+                    initialValue: _paymentMethod,
                     decoration: const InputDecoration(labelText: 'Phương thức'),
                     items: const [
                       DropdownMenuItem(value: 'demo', child: Text('Ví demo')),

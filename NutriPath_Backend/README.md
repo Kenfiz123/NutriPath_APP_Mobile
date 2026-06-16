@@ -12,9 +12,12 @@ Mặc định API chạy ở:
 
 ```text
 http://127.0.0.1:8080
+http://10.0.2.2:8080   # Android emulator
 ```
 
-Khi deploy Render/production, backend tự bind `0.0.0.0` để Render detect port. Local vẫn mặc định `127.0.0.1`; có thể override bằng `HOST`.
+Local mobile note: `.env` in this backend uses `HOST=0.0.0.0`, `PORT=8080`, and JSON data so the Android emulator can reach the API at `http://10.0.2.2:8080`.
+
+Local và production đều bind `0.0.0.0` theo mặc định để chạy được với Android emulator và các môi trường deploy; có thể override bằng `HOST`.
 
 Chạy `npm install` trước khi dùng Supabase PostgreSQL hoặc deploy production vì backend cần package `pg`. Local JSON mode vẫn có thể chạy nhanh bằng file `data/db.json`.
 

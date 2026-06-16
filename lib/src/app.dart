@@ -10,7 +10,7 @@ import 'features/screens.dart';
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final session = ref.watch(sessionControllerProvider);
+  final session = ref.read(sessionControllerProvider);
   const protectedPaths = {
     '/dashboard',
     '/tracker',
