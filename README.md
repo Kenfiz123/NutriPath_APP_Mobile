@@ -1,17 +1,50 @@
-# fe
+# NutriPath Mobile
 
-A new Flutter project.
+Flutter mobile app for the NutriPath backend in `NutriPath_Backend`.
 
-## Getting Started
+## Run The Backend
 
-This project is a starting point for a Flutter application.
+```powershell
+cd .\NutriPath_Backend
+npm ci
+npm run dev
+```
 
-A few resources to get you started if this is your first Flutter project:
+The backend runs at `http://127.0.0.1:8080` on Windows.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Run The Flutter App
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Open this folder in Android Studio, select an Android emulator, then run:
+
+```powershell
+flutter pub get
+flutter run
+```
+
+By default the app uses:
+
+- Android emulator: `http://10.0.2.2:8080`
+- Desktop/web: `http://127.0.0.1:8080`
+
+To use a deployed backend or a physical Android device, pass a URL explicitly:
+
+```powershell
+flutter run --dart-define=API_BASE_URL=https://your-backend.example.com
+```
+
+For a physical Android phone on the same Wi-Fi, use your computer LAN IP:
+
+```powershell
+flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8080
+```
+
+## Main Features
+
+- Auth: login, register, session restore, logout.
+- Dashboard: daily calories, macros, water, weekly progress, AI coach preview.
+- Tracker: meals, food library, camera food estimate, custom foods, water, workouts.
+- Recipes: search, tag filtering, saved personalized recipes, AI recipe generation.
+- Reports: nutrition range, charts, top foods, CSV share/export.
+- Membership: Free/VIP/SVIP plans, quote, discount, trial, demo checkout.
+- Profile: member profile, plan benefits, notifications, payment history.
+- Admin: overview, users, content, analytics, AI settings, security, system status.

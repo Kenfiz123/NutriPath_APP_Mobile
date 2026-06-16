@@ -14,6 +14,6 @@ void main() {
 
     expect(find.byIcon(Icons.eco), findsOneWidget);
     expect(find.text('NutriPath'), findsOneWidget);
-    expect(find.text('Chào mừng trở lại'), findsOneWidget);
+    expect(find.text('Chào mừng trở lại!'), findsOneWidget);
   });
 }

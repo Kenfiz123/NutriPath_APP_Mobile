@@ -62,34 +62,34 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/recipes',
-            builder: (context, state) => const RecipesScreen(),
+            builder: (context, state) => const FullRecipesScreen(),
           ),
           GoRoute(
             path: '/reports',
-            builder: (context, state) => const ReportsScreen(),
+            builder: (context, state) => const FullReportsScreen(),
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) => const FullProfileScreen(),
           ),
           GoRoute(
             path: '/calculator',
-            builder: (context, state) => const CalculatorScreen(),
+            builder: (context, state) => const FullCalculatorScreen(),
           ),
           GoRoute(
             path: '/pricing',
-            builder: (context, state) => const PricingScreen(),
+            builder: (context, state) => const FullPricingScreen(),
           ),
           GoRoute(
             path: '/checkout',
-            builder: (context, state) => CheckoutScreen(
+            builder: (context, state) => FullCheckoutScreen(
               initialPlanId: state.uri.queryParameters['plan'] ?? 'vip',
               initialBilling: state.uri.queryParameters['billing'] ?? 'monthly',
             ),
           ),
           GoRoute(
             path: '/admin',
-            builder: (context, state) => const AdminScreen(),
+            builder: (context, state) => const FullAdminScreen(),
           ),
         ],
       ),

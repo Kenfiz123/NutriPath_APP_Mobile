@@ -15,7 +15,10 @@ class AppConfig {
 
   static String get apiBaseUrl {
     if (_definedBaseUrl.trim().isNotEmpty) return _definedBaseUrl.trim();
-    return 'https://nutripath-l4rk.onrender.com';
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8080';
+    }
+    return 'http://127.0.0.1:8080';
   }
 }
 
@@ -195,6 +198,15 @@ class ApiClient {
     );
   }
 
+  Future<AppNotification> markNotificationRead(String notificationId) async {
+    final json = await _request(
+      '/api/members/${_memberId()}/notifications/$notificationId',
+      method: 'PATCH',
+      body: {'read': true},
+    );
+    return AppNotification.fromJson(json);
+  }
+
   Future<JsonMap> createWeeklyCoachPlan({String? startDate}) async {
     final body = <String, dynamic>{};
     if (startDate != null) {
@@ -279,6 +291,23 @@ class ApiClient {
     return MealLog.fromJson(json);
   }
 
+  Future<MealLog> addWorkout(String date, JsonMap payload) async {
+    final json = await _request(
+      '/api/members/${_memberId()}/meal-logs/${Uri.encodeComponent(date)}/workouts',
+      method: 'POST',
+      body: payload,
+    );
+    return MealLog.fromJson(json['mealLog']);
+  }
+
+  Future<MealLog> deleteWorkout(String date, String workoutId) async {
+    final json = await _request(
+      '/api/members/${_memberId()}/meal-logs/${Uri.encodeComponent(date)}/workouts/$workoutId',
+      method: 'DELETE',
+    );
+    return MealLog.fromJson(json);
+  }
+
   Future<JsonMap> estimateFoodPhoto({
     required String imageDataUrl,
     String? notes,
@@ -309,6 +338,21 @@ class ApiClient {
       '/api/members/${_memberId()}/custom-foods?search=${Uri.encodeQueryComponent(search)}',
     );
     return embeddedList(json, 'customFoods');
+  }
+
+  Future<JsonMap> createCustomFood(JsonMap payload) async {
+    return _request(
+      '/api/members/${_memberId()}/custom-foods',
+      method: 'POST',
+      body: payload,
+    );
+  }
+
+  Future<void> deleteCustomFood(String foodId) async {
+    await _request(
+      '/api/members/${_memberId()}/custom-foods/$foodId',
+      method: 'DELETE',
+    );
   }
 
   Future<RecipeCollection> getRecipes({
@@ -345,6 +389,11 @@ class ApiClient {
     return embeddedList(json, 'plans').map(Plan.fromJson).toList();
   }
 
+  Future<List<JsonMap>> getFaqs() async {
+    final json = await _request('/api/faqs', auth: false);
+    return embeddedList(json, 'faqs');
+  }
+
   Future<CheckoutQuote> getCheckoutQuote({
     required String planId,
     required String billing,
@@ -365,8 +414,15 @@ class ApiClient {
   }
 
   Future<(Payment, Member)> createPayment(JsonMap payload) async {
-    final json = await _request('/api/payments', method: 'POST', body: payload);
+    final body = <String, dynamic>{...payload};
+    body.putIfAbsent('memberId', _memberId);
+    final json = await _request('/api/payments', method: 'POST', body: body);
     return (Payment.fromJson(json['payment']), Member.fromJson(json['member']));
+  }
+
+  Future<List<Payment>> getPayments() async {
+    final json = await _request('/api/members/${_memberId()}/payments');
+    return embeddedList(json, 'payments').map(Payment.fromJson).toList();
   }
 
   Future<JsonMap> getProfile() {
@@ -437,6 +493,8 @@ class ApiClient {
   Future<JsonMap> getAdminContent() => _request('/api/admin/content');
 
   Future<JsonMap> getAdminAnalytics() => _request('/api/admin/analytics');
+
+  Future<JsonMap> getAdminSystem() => _request('/api/admin/system');
 
   Future<JsonMap> getAdminAiSettings() => _request('/api/admin/settings/ai');
 

@@ -1,0 +1,20 @@
+{
+  "name": "nutripath-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NutriPath REST API with HAL-style HATEOAS responses.",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "check": "node --check src/server.js && node --check src/app.js && node --check src/store.js && node --check src/sqlserver-import.js && node --check src/supabase-postgres-store.js && node --check src/supabase-normalized-store.js && node --check src/hateoas.js && node --check src/data/seed.js && node --check scripts/smoke-test.js && node --check scripts/controller-flow-test.js && node scripts/check-controllers.js",
+    "test:smoke": "node scripts/smoke-test.js",
+    "test:flow": "node scripts/controller-flow-test.js"
+  }
+}
