@@ -106,6 +106,29 @@ curl -X POST http://127.0.0.1:8080/api/payments \
   -d "{\"memberId\":\"mem-001\",\"planId\":\"vip\",\"billing\":\"monthly\",\"paymentMethod\":\"card\",\"discountCode\":\"NUTRIPATH10\"}"
 ```
 
+## Stripe Payments
+
+Mobile apps use Stripe PaymentSheet through PaymentIntents so the card form stays inside the app. Hosted Checkout Sessions are still available as a web/desktop fallback. Set these backend environment variables before using the Stripe path:
+
+```powershell
+$env:STRIPE_SECRET_KEY="sk_test_..."
+$env:STRIPE_PUBLISHABLE_KEY="pk_test_..."      # required by mobile PaymentSheet
+$env:STRIPE_WEBHOOK_SECRET="whsec_..."         # required for /api/stripe/webhook
+$env:STRIPE_CHECKOUT_SUCCESS_URL="https://your-api.example.com/api/stripe/checkout/success?session_id={CHECKOUT_SESSION_ID}"
+$env:STRIPE_CHECKOUT_CANCEL_URL="https://your-api.example.com/api/stripe/checkout/cancel"
+node src/server.js
+```
+
+New endpoints:
+
+- `POST /api/stripe/payment-intents`: create a Stripe PaymentIntent for native mobile PaymentSheet.
+- `GET /api/stripe/payment-intents/:id`: verify a successful PaymentIntent and activate the member plan.
+- `POST /api/stripe/checkout-sessions`: create a Stripe hosted Checkout Session.
+- `GET /api/stripe/checkout-sessions/:id`: verify a paid session and activate the member plan.
+- `POST /api/stripe/webhook`: fulfil `payment_intent.succeeded`, `checkout.session.completed`, and async succeeded events with signature verification.
+
+The legacy `POST /api/payments` demo flow still exists for local demos without Stripe keys.
+
 ## Data store
 
 Backend có 3 mode dữ liệu:

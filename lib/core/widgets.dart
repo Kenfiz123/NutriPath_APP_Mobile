@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import 'app_theme.dart';
+import 'constants/app_colors.dart';
+import 'constants/app_sizes.dart';
 
 final _vnd = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 final _number = NumberFormat.decimalPattern('vi_VN');
@@ -62,18 +63,18 @@ void showSnack(BuildContext context, String message) {
 
 Color mealColor(String id) {
   return switch (id) {
-    'breakfast' => NutriColors.amber,
-    'lunch' => NutriColors.emerald,
-    'dinner' => NutriColors.blue,
-    'snack' => NutriColors.purple,
-    _ => NutriColors.teal,
+    'breakfast' => AppColors.amber,
+    'lunch' => AppColors.emerald,
+    'dinner' => AppColors.blue,
+    'snack' => AppColors.purple,
+    _ => AppColors.teal,
   };
 }
 
 class NutriPage extends StatelessWidget {
   const NutriPage({
     required this.children,
-    this.padding = const EdgeInsets.all(NutriSpacing.page),
+    this.padding = const EdgeInsets.all(AppSizes.page),
     this.bottomPadding = 110,
     super.key,
   });
@@ -88,7 +89,7 @@ class NutriPage extends StatelessWidget {
       padding: padding.copyWith(bottom: bottomPadding),
       itemBuilder: (context, index) => children[index],
       separatorBuilder: (context, index) =>
-          const SizedBox(height: NutriSpacing.md),
+          const SizedBox(height: AppSizes.md),
       itemCount: children.length,
     );
   }
@@ -111,14 +112,14 @@ class NutriCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget content = Padding(
-      padding: padding ?? const EdgeInsets.all(NutriSpacing.lg),
+      padding: padding ?? const EdgeInsets.all(AppSizes.lg),
       child: child,
     );
 
     if (onTap != null) {
       content = InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(NutriSpacing.radius),
+        borderRadius: BorderRadius.circular(AppSizes.radius),
         child: content,
       );
     }
@@ -186,7 +187,7 @@ class MetricCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    this.accent = NutriColors.primary,
+    this.accent = AppColors.primary,
     this.caption,
     super.key,
   });
@@ -201,7 +202,7 @@ class MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return NutriCard(
-      padding: const EdgeInsets.all(NutriSpacing.md),
+      padding: const EdgeInsets.all(AppSizes.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -217,7 +218,7 @@ class MetricCard extends StatelessWidget {
                 ),
                 child: Icon(icon, color: accent, size: 18),
               ),
-              const SizedBox(width: NutriSpacing.sm),
+              const SizedBox(width: AppSizes.sm),
               Expanded(
                 child: Text(
                   label,
@@ -229,7 +230,7 @@ class MetricCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: NutriSpacing.sm),
+          const SizedBox(height: AppSizes.sm),
           Text(
             value,
             style: theme.textTheme.headlineSmall?.copyWith(
@@ -256,7 +257,7 @@ class MetricCard extends StatelessWidget {
 class ProgressLine extends StatelessWidget {
   const ProgressLine({
     required this.value,
-    this.color = NutriColors.primary,
+    this.color = AppColors.primary,
     this.height = 10,
     super.key,
   });
@@ -289,9 +290,9 @@ class TierChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final normalized = tier.toLowerCase();
     final color = switch (normalized) {
-      'svip' => NutriColors.amber,
-      'vip' => NutriColors.emerald,
-      _ => NutriColors.blue,
+      'svip' => AppColors.amber,
+      'vip' => AppColors.emerald,
+      _ => AppColors.blue,
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -343,7 +344,7 @@ class ErrorPanel extends StatelessWidget {
             color: Theme.of(context).colorScheme.error,
             size: 40,
           ),
-          const SizedBox(height: NutriSpacing.md),
+          const SizedBox(height: AppSizes.md),
           Text(
             'Đã xảy ra lỗi',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -351,14 +352,14 @@ class ErrorPanel extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: NutriSpacing.xs),
+          const SizedBox(height: AppSizes.xs),
           Text(
             readableError(error),
             textAlign: TextAlign.center,
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
           if (onRetry != null) ...[
-            const SizedBox(height: NutriSpacing.lg),
+            const SizedBox(height: AppSizes.lg),
             FilledButton.tonalIcon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
@@ -390,7 +391,7 @@ class EmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(NutriSpacing.xl),
+        padding: const EdgeInsets.all(AppSizes.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -402,7 +403,7 @@ class EmptyState extends StatelessWidget {
               ),
               child: Icon(icon, size: 48, color: theme.colorScheme.primary),
             ),
-            const SizedBox(height: NutriSpacing.lg),
+            const SizedBox(height: AppSizes.lg),
             Text(
               title,
               style: theme.textTheme.titleLarge?.copyWith(
@@ -419,7 +420,7 @@ class EmptyState extends StatelessWidget {
               ),
             ),
             if (action != null) ...[
-              const SizedBox(height: NutriSpacing.xl),
+              const SizedBox(height: AppSizes.xl),
               action!,
             ],
           ],
@@ -461,19 +462,19 @@ class LockedPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return NutriCard(
-      color: NutriColors.amber.withValues(alpha: 0.08),
+      color: AppColors.amber.withValues(alpha: 0.08),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: NutriColors.amber.withValues(alpha: 0.15),
+              color: AppColors.amber.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.workspace_premium, color: NutriColors.amber, size: 20),
+            child: const Icon(Icons.workspace_premium, color: AppColors.amber, size: 20),
           ),
-          const SizedBox(width: NutriSpacing.md),
+          const SizedBox(width: AppSizes.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,7 +483,7 @@ class LockedPanel extends StatelessWidget {
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: NutriColors.orange,
+                    color: AppColors.orange,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -522,7 +523,7 @@ class LoadingPanel extends StatelessWidget {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 3),
             ),
-            const SizedBox(width: NutriSpacing.lg),
+            const SizedBox(width: AppSizes.lg),
             Text(
               message,
               style: const TextStyle(fontWeight: FontWeight.w600),
@@ -554,7 +555,7 @@ class KeyValueLine extends StatelessWidget {
         children: [
           if (icon != null) ...[
             Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: NutriSpacing.sm),
+            const SizedBox(width: AppSizes.sm),
           ],
           Expanded(
             child: Text(

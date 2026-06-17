@@ -177,12 +177,14 @@ function sendJson(req, res, status, payload) {
   res.end(JSON.stringify(payload, null, 2));
 }
 
-async function readBody(req) {
+async function readRawBody(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
-  if (chunks.length === 0) return {};
+  return chunks.length === 0 ? "" : Buffer.concat(chunks).toString("utf8");
+}
 
-  const raw = Buffer.concat(chunks).toString("utf8").trim();
+async function readBody(req) {
+  const raw = (await readRawBody(req)).trim();
   if (!raw) return {};
 
   try {
@@ -3632,6 +3634,7 @@ registerControllers({
   planLabel,
   planResource,
   readBody,
+  readRawBody,
   recipeResource,
   redactSensitiveText,
   refineFoodPhotoEstimateForSvip,
@@ -3698,7 +3701,10 @@ export async function createServer(options = {}) {
       }
 
       const params = matchRoute(matched.pattern, pathname);
-      const body = ["POST", "PATCH", "PUT"].includes(req.method) ? await readBody(req) : {};
+      const hasRequestBody = ["POST", "PATCH", "PUT"].includes(req.method);
+      const needsRawBody = matched.pattern === "/api/stripe/webhook";
+      const rawBody = hasRequestBody && needsRawBody ? await readRawBody(req) : null;
+      const body = hasRequestBody && rawBody === null ? await readBody(req) : {};
       const payload = await matched.handler({
         req,
         res,
@@ -3706,6 +3712,7 @@ export async function createServer(options = {}) {
         url: requestUrl,
         params,
         body: cloneRecord(body),
+        rawBody,
       });
 
       const status = req.method === "POST" ? 201 : 200;

@@ -5,46 +5,59 @@ import 'package:go_router/go_router.dart';
 
 import 'core/app_services.dart';
 import 'core/app_theme.dart';
-import 'features/screens.dart';
+import 'core/constants/app_routes.dart';
+import 'core/constants/app_sizes.dart';
+import 'features/admin/screens/admin_screen.dart';
+import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/register_screen.dart';
+import 'features/calculator/screens/full_calculator_screen.dart';
+import 'features/chat/widgets/chat_sheet.dart';
+import 'features/checkout/screens/full_checkout_screen.dart';
+import 'features/dashboard/screens/dashboard_screen.dart';
+import 'features/meal_tracker/screens/meal_tracker_screen.dart';
+import 'features/pricing/screens/full_pricing_screen.dart';
+import 'features/profile/screens/full_profile_screen.dart';
+import 'features/recipes/screens/full_recipes_screen.dart';
+import 'features/reports/screens/full_reports_screen.dart';
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final session = ref.read(sessionControllerProvider);
   const protectedPaths = {
-    '/dashboard',
-    '/tracker',
-    '/reports',
-    '/profile',
-    '/checkout',
+    AppRoutes.dashboard,
+    AppRoutes.tracker,
+    AppRoutes.reports,
+    AppRoutes.profile,
+    AppRoutes.checkout,
   };
 
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: AppRoutes.dashboard,
     refreshListenable: session,
     redirect: (context, state) {
       if (!session.initialized) return null;
       final path = state.uri.path;
-      final isAuthPage = path == '/login' || path == '/register';
-      if (isAuthPage && session.isLoggedIn) return '/dashboard';
+      final isAuthPage = path == AppRoutes.login || path == AppRoutes.register;
+      if (isAuthPage && session.isLoggedIn) return AppRoutes.dashboard;
       if (protectedPaths.contains(path) && !session.isLoggedIn) {
         final from = Uri.encodeComponent(state.uri.toString());
-        return '/login?from=$from';
+        return '${AppRoutes.login}?from=$from';
       }
-      if (path == '/admin' && (!session.isLoggedIn || !session.isAdmin)) {
-        return session.isLoggedIn ? '/dashboard' : '/login?from=%2Fadmin';
+      if (path == AppRoutes.admin && (!session.isLoggedIn || !session.isAdmin)) {
+        return session.isLoggedIn ? AppRoutes.dashboard : '${AppRoutes.login}?from=%2Fadmin';
       }
       return null;
     },
     routes: [
-      GoRoute(path: '/', redirect: (context, state) => '/dashboard'),
+      GoRoute(path: AppRoutes.root, redirect: (context, state) => AppRoutes.dashboard),
       GoRoute(
-        path: '/login',
+        path: AppRoutes.login,
         builder: (context, state) =>
             LoginScreen(from: state.uri.queryParameters['from']),
       ),
       GoRoute(
-        path: '/register',
+        path: AppRoutes.register,
         builder: (context, state) => const RegisterScreen(),
       ),
       ShellRoute(
@@ -53,42 +66,42 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
         routes: [
           GoRoute(
-            path: '/dashboard',
+            path: AppRoutes.dashboard,
             builder: (context, state) => const DashboardScreen(),
           ),
           GoRoute(
-            path: '/tracker',
+            path: AppRoutes.tracker,
             builder: (context, state) => const MealTrackerScreen(),
           ),
           GoRoute(
-            path: '/recipes',
+            path: AppRoutes.recipes,
             builder: (context, state) => const FullRecipesScreen(),
           ),
           GoRoute(
-            path: '/reports',
+            path: AppRoutes.reports,
             builder: (context, state) => const FullReportsScreen(),
           ),
           GoRoute(
-            path: '/profile',
+            path: AppRoutes.profile,
             builder: (context, state) => const FullProfileScreen(),
           ),
           GoRoute(
-            path: '/calculator',
+            path: AppRoutes.calculator,
             builder: (context, state) => const FullCalculatorScreen(),
           ),
           GoRoute(
-            path: '/pricing',
+            path: AppRoutes.pricing,
             builder: (context, state) => const FullPricingScreen(),
           ),
           GoRoute(
-            path: '/checkout',
+            path: AppRoutes.checkout,
             builder: (context, state) => FullCheckoutScreen(
               initialPlanId: state.uri.queryParameters['plan'] ?? 'vip',
               initialBilling: state.uri.queryParameters['billing'] ?? 'monthly',
             ),
           ),
           GoRoute(
-            path: '/admin',
+            path: AppRoutes.admin,
             builder: (context, state) => const FullAdminScreen(),
           ),
         ],
@@ -125,7 +138,7 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);
     final selectedIndex = _selectedIndex(location);
-    final canOpenChat = location != '/login' && location != '/register';
+    final canOpenChat = location != AppRoutes.login && location != AppRoutes.register;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -139,25 +152,25 @@ class AppShell extends ConsumerWidget {
               ),
               child: const Icon(Icons.eco, color: Colors.white, size: 20),
             ),
-            const SizedBox(width: NutriSpacing.sm),
+            const SizedBox(width: AppSizes.sm),
             const Text('NutriPath'),
           ],
         ),
         actions: [
           IconButton(
             tooltip: 'Tính calo',
-            onPressed: () => context.go('/calculator'),
+            onPressed: () => context.go(AppRoutes.calculator),
             icon: const Icon(Icons.calculate_outlined),
           ),
           IconButton(
             tooltip: 'Gói thành viên',
-            onPressed: () => context.go('/pricing'),
+            onPressed: () => context.go(AppRoutes.pricing),
             icon: const Icon(Icons.workspace_premium_outlined),
           ),
           if (session.isAdmin)
             IconButton(
               tooltip: 'Admin',
-              onPressed: () => context.go('/admin'),
+              onPressed: () => context.go(AppRoutes.admin),
               icon: const Icon(Icons.admin_panel_settings_outlined),
             ),
           IconButton(
@@ -232,31 +245,31 @@ class _Destination {
 
 const _destinations = [
   _Destination(
-    path: '/dashboard',
+    path: AppRoutes.dashboard,
     label: 'Dashboard',
     icon: Icons.dashboard_outlined,
     selectedIcon: Icons.dashboard,
   ),
   _Destination(
-    path: '/tracker',
+    path: AppRoutes.tracker,
     label: 'Theo dõi',
     icon: Icons.restaurant_menu_outlined,
     selectedIcon: Icons.restaurant_menu,
   ),
   _Destination(
-    path: '/recipes',
+    path: AppRoutes.recipes,
     label: 'Công thức',
     icon: Icons.menu_book_outlined,
     selectedIcon: Icons.menu_book,
   ),
   _Destination(
-    path: '/reports',
+    path: AppRoutes.reports,
     label: 'Báo cáo',
     icon: Icons.insert_chart_outlined,
     selectedIcon: Icons.insert_chart,
   ),
   _Destination(
-    path: '/profile',
+    path: AppRoutes.profile,
     label: 'Hồ sơ',
     icon: Icons.person_outline,
     selectedIcon: Icons.person,

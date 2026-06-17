@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:fe/src/app.dart';
+import 'package:fe/app.dart';
 
 void main() {
   testWidgets('NutriPath app boots to auth guard', (WidgetTester tester) async {

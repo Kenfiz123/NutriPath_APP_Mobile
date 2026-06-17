@@ -429,6 +429,43 @@ class ApiClient {
     return (Payment.fromJson(json['payment']), Member.fromJson(json['member']));
   }
 
+  Future<JsonMap> createStripeCheckoutSession(JsonMap payload) {
+    final body = <String, dynamic>{...payload};
+    body.putIfAbsent('memberId', _memberId);
+    body.putIfAbsent(
+      'successUrl',
+      () =>
+          '${AppConfig.apiBaseUrl}/api/stripe/checkout/success?session_id={CHECKOUT_SESSION_ID}',
+    );
+    body.putIfAbsent(
+      'cancelUrl',
+      () => '${AppConfig.apiBaseUrl}/api/stripe/checkout/cancel',
+    );
+    return _request(
+      '/api/stripe/checkout-sessions',
+      method: 'POST',
+      body: body,
+    );
+  }
+
+  Future<JsonMap> createStripePaymentIntent(JsonMap payload) {
+    final body = <String, dynamic>{...payload};
+    body.putIfAbsent('memberId', _memberId);
+    return _request('/api/stripe/payment-intents', method: 'POST', body: body);
+  }
+
+  Future<JsonMap> syncStripePaymentIntent(String paymentIntentId) {
+    return _request(
+      '/api/stripe/payment-intents/${Uri.encodeComponent(paymentIntentId)}',
+    );
+  }
+
+  Future<JsonMap> syncStripeCheckoutSession(String sessionId) {
+    return _request(
+      '/api/stripe/checkout-sessions/${Uri.encodeComponent(sessionId)}',
+    );
+  }
+
   Future<List<Payment>> getPayments() async {
     final json = await _request('/api/members/${_memberId()}/payments');
     return embeddedList(json, 'payments').map(Payment.fromJson).toList();
