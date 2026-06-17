@@ -418,6 +418,9 @@ class _StatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = data.nutrition;
+    final waterTargetMl = n.targets.waterMl > 0
+        ? n.targets.waterMl.round()
+        : data.member.waterTargetGlasses * 250;
     return GridView.count(
       crossAxisCount: 3,
       shrinkWrap: true,
@@ -441,10 +444,10 @@ class _StatsGrid extends StatelessWidget {
         ),
         MetricCard(
           label: 'Nước',
-          value: '${data.mealLog.waterGlasses} ly',
+          value: '${formatNumber(data.mealLog.waterMl)} ml',
           icon: Icons.water_drop,
           accent: NutriColors.teal,
-          caption: 'cần ${data.member.waterTargetGlasses}',
+          caption: 'cần ${formatNumber(waterTargetMl)} ml',
         ),
       ],
     );
@@ -631,31 +634,45 @@ class MealTrackerScreen extends ConsumerStatefulWidget {
 
 class _MealTrackerScreenState extends ConsumerState<MealTrackerScreen> {
   late DateTime _date;
-  late Future<MealLog> _future;
+  Future<MealLog>? _future;
 
   @override
   void initState() {
     super.initState();
     _date = DateTime.now();
-    _future = _load();
   }
 
   Future<MealLog> _load() =>
       ref.read(apiClientProvider).getMealLog(localDateString(_date));
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
+
+  void _applyLog(MealLog log) {
+    setState(() {
+      _future = Future.value(log);
+    });
+  }
 
   void _shift(int d) => setState(() {
     _date = _date.add(Duration(days: d));
-    _future = _load();
+    _future = null;
   });
 
   @override
   Widget build(BuildContext context) {
+    final session = ref.watch(sessionControllerProvider);
+    if (!session.initialized) return const LoadingPanel();
+    if (!session.isLoggedIn) return const LoginPrompt();
+    final future = _future ??= _load();
+
     return RefreshIndicator(
       onRefresh: () async => _reload(),
       child: FutureBuilder<MealLog>(
-        future: _future,
+        future: future,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return NutriPage(
@@ -672,10 +689,10 @@ class _MealTrackerScreenState extends ConsumerState<MealTrackerScreen> {
                 onPrev: () => _shift(-1),
                 onNext: () => _shift(1),
               ),
-              _WaterTracker(log: log, onUpdate: _reload),
+              _WaterTracker(log: log, onUpdate: _applyLog),
               _WorkoutTracker(log: log, onUpdate: _reload),
               for (final m in log.meals)
-                _MealSection(meal: m, date: _date, onUpdate: _reload),
+                _MealSection(meal: m, date: _date, onUpdate: _applyLog),
             ],
           );
         },
@@ -724,13 +741,20 @@ class _DateNavigator extends StatelessWidget {
 
 class _WaterTracker extends ConsumerWidget {
   const _WaterTracker({required this.log, required this.onUpdate});
+
+  static const _waterStepMl = 250;
+
   final MealLog log;
-  final VoidCallback onUpdate;
+  final ValueChanged<MealLog> onUpdate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final target = log.summary.targets.waterGlasses.round();
-    final current = log.waterGlasses;
+    final targetFromSummary = log.summary.targets.waterMl.round();
+    final target = targetFromSummary > 0
+        ? targetFromSummary
+        : (log.summary.targets.waterGlasses * _waterStepMl).round();
+    final current = log.waterMl;
+    final progressTarget = target <= 0 ? _waterStepMl : target;
 
     return NutriCard(
       child: Row(
@@ -752,9 +776,13 @@ class _WaterTracker extends ConsumerWidget {
                   'Uống nước',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                 ),
+                Text(
+                  '${formatNumber(current)} / ${formatNumber(progressTarget)} ml',
+                  style: const TextStyle(color: NutriColors.muted),
+                ),
                 const SizedBox(height: 4),
                 ProgressLine(
-                  value: current / (target == 0 ? 1 : target),
+                  value: current / progressTarget,
                   color: NutriColors.teal,
                 ),
               ],
@@ -765,36 +793,96 @@ class _WaterTracker extends ConsumerWidget {
             children: [
               IconButton(
                 onPressed: current > 0
-                    ? () async {
-                        await ref
-                            .read(apiClientProvider)
-                            .updateWater(log.date, current - 1);
-                        onUpdate();
-                      }
+                    ? () => _setWaterMl(
+                        context,
+                        ref,
+                        current - _waterStepMl < 0 ? 0 : current - _waterStepMl,
+                      )
                     : null,
+                tooltip: 'Giảm 250 ml',
                 icon: const Icon(Icons.remove_circle_outline),
               ),
-              Text(
-                '$current',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
+              TextButton(
+                onPressed: () => _addWaterMl(context, ref, _waterStepMl),
+                child: const Text('+250 ml'),
               ),
               IconButton(
-                onPressed: () async {
-                  await ref
-                      .read(apiClientProvider)
-                      .updateWater(log.date, current + 1);
-                  onUpdate();
-                },
-                icon: const Icon(Icons.add_circle, color: NutriColors.teal),
+                tooltip: 'Nhập ml',
+                onPressed: () => _showAddWaterDialog(context, ref),
+                icon: const Icon(Icons.edit_outlined),
               ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _setWaterMl(
+    BuildContext context,
+    WidgetRef ref,
+    int waterMl,
+  ) async {
+    try {
+      final updated = await ref
+          .read(apiClientProvider)
+          .updateWaterMl(log.date, waterMl);
+      onUpdate(updated);
+    } catch (e) {
+      if (context.mounted) showSnack(context, readableError(e));
+    }
+  }
+
+  Future<void> _addWaterMl(
+    BuildContext context,
+    WidgetRef ref,
+    int amountMl,
+  ) async {
+    try {
+      final updated = await ref
+          .read(apiClientProvider)
+          .addWaterMl(log.date, amountMl);
+      onUpdate(updated);
+    } catch (e) {
+      if (context.mounted) showSnack(context, readableError(e));
+    }
+  }
+
+  Future<void> _showAddWaterDialog(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController(text: '250');
+    final amount = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Thêm nước'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            labelText: 'Số ml',
+            suffixText: 'ml',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text.trim());
+              Navigator.pop(context, value);
+            },
+            child: const Text('Thêm'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (amount == null || amount <= 0) return;
+    if (!context.mounted) return;
+    await _addWaterMl(context, ref, amount);
   }
 }
 
@@ -900,7 +988,7 @@ class _MealSection extends ConsumerWidget {
   });
   final MealSection meal;
   final DateTime date;
-  final VoidCallback onUpdate;
+  final ValueChanged<MealLog> onUpdate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -974,14 +1062,20 @@ class _MealSection extends ConsumerWidget {
                     IconButton(
                       icon: const Icon(Icons.close, size: 18),
                       onPressed: () async {
-                        await ref
-                            .read(apiClientProvider)
-                            .deleteMealItem(
-                              localDateString(date),
-                              meal.id,
-                              item.id,
-                            );
-                        onUpdate();
+                        try {
+                          final updated = await ref
+                              .read(apiClientProvider)
+                              .deleteMealItem(
+                                localDateString(date),
+                                meal.id,
+                                item.id,
+                              );
+                          onUpdate(updated);
+                        } catch (e) {
+                          if (context.mounted) {
+                            showSnack(context, readableError(e));
+                          }
+                        }
                       },
                     ),
                   ],
@@ -1022,10 +1116,14 @@ class _MealSection extends ConsumerWidget {
       builder: (context) => _FoodPickerDialog(api: ref.read(apiClientProvider)),
     );
     if (food == null) return;
-    await ref
-        .read(apiClientProvider)
-        .addMealItem(localDateString(date), meal.id, food.id);
-    onUpdate();
+    try {
+      final updated = await ref
+          .read(apiClientProvider)
+          .addMealItem(localDateString(date), meal.id, food.id);
+      onUpdate(updated);
+    } catch (e) {
+      if (context.mounted) showSnack(context, readableError(e));
+    }
   }
 
   Future<void> _addFromPhoto(BuildContext context, WidgetRef ref) async {
@@ -1083,10 +1181,10 @@ class _MealSection extends ConsumerWidget {
       );
 
       if (confirm == true) {
-        await ref
+        final updated = await ref
             .read(apiClientProvider)
             .addMealItem(localDateString(date), meal.id, addable);
-        onUpdate();
+        onUpdate(updated);
       }
     } catch (e) {
       if (context.mounted) showSnack(context, readableError(e));
@@ -1106,8 +1204,12 @@ class _MealSection extends ConsumerWidget {
       final saved = await api.createCustomFood(res);
       final addable = saved.isEmpty ? asJsonMap(res['addableItem']) : saved;
       if (addable.isNotEmpty) {
-        await api.addMealItem(localDateString(date), meal.id, addable);
-        onUpdate();
+        final updated = await api.addMealItem(
+          localDateString(date),
+          meal.id,
+          addable,
+        );
+        onUpdate(updated);
       }
     } catch (e) {
       if (context.mounted) showSnack(context, readableError(e));
@@ -1538,7 +1640,11 @@ class _FoodPickerDialogState extends State<_FoodPickerDialog> {
     _future = widget.api.getFoods();
   }
 
-  void _run() => setState(() => _future = widget.api.getFoods(_search.text));
+  void _run() {
+    setState(() {
+      _future = widget.api.getFoods(_search.text);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2523,7 +2629,11 @@ class _FullRecipesScreenState extends ConsumerState<FullRecipesScreen> {
         .getRecipes(search: _search.text.trim(), tag: _tag);
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2776,7 +2886,11 @@ class _FullReportsScreenState extends ConsumerState<FullReportsScreen> {
   Future<NutritionReport> _load() =>
       ref.read(apiClientProvider).getNutritionReport(days: _days);
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2996,7 +3110,11 @@ class _FullProfileScreenState extends ConsumerState<FullProfileScreen> {
     );
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3346,7 +3464,11 @@ class _FullPricingScreenState extends ConsumerState<FullPricingScreen> {
     );
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3539,7 +3661,11 @@ class _FullCheckoutScreenState extends ConsumerState<FullCheckoutScreen> {
         );
   }
 
-  void _reloadQuote() => setState(() => _quoteFuture = _quote());
+  void _reloadQuote() {
+    setState(() {
+      _quoteFuture = _quote();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3725,7 +3851,11 @@ class _FullAdminScreenState extends ConsumerState<FullAdminScreen> {
     );
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

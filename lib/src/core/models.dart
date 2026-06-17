@@ -54,17 +54,20 @@ class MacroTargets {
     this.carbs = 0,
     this.fat = 0,
     this.calories = 0,
+    this.waterMl = 0,
     this.waterGlasses = 0,
   });
 
   factory MacroTargets.fromJson(Object? value) {
     final json = asJsonMap(value);
+    final waterGlasses = asDouble(json['waterGlasses']);
     return MacroTargets(
       protein: asDouble(json['protein']),
       carbs: asDouble(json['carbs']),
       fat: asDouble(json['fat']),
       calories: asDouble(json['calories']),
-      waterGlasses: asDouble(json['waterGlasses']),
+      waterMl: asDouble(json['waterMl'], waterGlasses * 250),
+      waterGlasses: waterGlasses,
     );
   }
 
@@ -72,6 +75,7 @@ class MacroTargets {
   final double carbs;
   final double fat;
   final double calories;
+  final double waterMl;
   final double waterGlasses;
 }
 
@@ -475,6 +479,7 @@ class MealLog {
     required this.id,
     required this.memberId,
     required this.date,
+    this.waterMl = 0,
     this.waterGlasses = 0,
     this.activity = const <String, dynamic>{},
     this.goals = const <JsonMap>[],
@@ -485,11 +490,13 @@ class MealLog {
 
   factory MealLog.fromJson(Object? value) {
     final json = asJsonMap(value);
+    final waterGlasses = asInt(json['waterGlasses']);
     return MealLog(
       id: asString(json['id']),
       memberId: asString(json['memberId']),
       date: asString(json['date']),
-      waterGlasses: asInt(json['waterGlasses']),
+      waterMl: asInt(json['waterMl'], waterGlasses * 250),
+      waterGlasses: waterGlasses,
       activity: asJsonMap(json['activity']),
       goals: jsonMapList(json['goals']),
       meals: jsonMapList(json['meals']).map(MealSection.fromJson).toList(),
@@ -503,6 +510,7 @@ class MealLog {
   final String id;
   final String memberId;
   final String date;
+  final int waterMl;
   final int waterGlasses;
   final JsonMap activity;
   final List<JsonMap> goals;

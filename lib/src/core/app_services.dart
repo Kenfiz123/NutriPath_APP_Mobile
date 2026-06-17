@@ -282,11 +282,20 @@ class ApiClient {
     return MealLog.fromJson(json);
   }
 
-  Future<MealLog> updateWater(String date, int waterGlasses) async {
+  Future<MealLog> updateWaterMl(String date, int waterMl) async {
     final json = await _request(
       '/api/members/${_memberId()}/meal-logs/${Uri.encodeComponent(date)}/water',
       method: 'PATCH',
-      body: {'waterGlasses': waterGlasses},
+      body: {'waterMl': waterMl},
+    );
+    return MealLog.fromJson(json);
+  }
+
+  Future<MealLog> addWaterMl(String date, int addWaterMl) async {
+    final json = await _request(
+      '/api/members/${_memberId()}/meal-logs/${Uri.encodeComponent(date)}/water',
+      method: 'PATCH',
+      body: {'addWaterMl': addWaterMl},
     );
     return MealLog.fromJson(json);
   }
