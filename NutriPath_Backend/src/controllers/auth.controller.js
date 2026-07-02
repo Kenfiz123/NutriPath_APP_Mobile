@@ -183,6 +183,15 @@ export function registerAuthRoutes(ctx) {
     verifySupabaseAccessToken
   } = ctx;
 
+  function queueOtpEmail(email, otpCode) {
+    const delayMs = Math.max(0, Number(process.env.OTP_EMAIL_BACKGROUND_DELAY_MS || 3000));
+    setTimeout(() => {
+      sendOtpEmail({ email, otpCode }).catch((error) => {
+        console.error("[EMAIL OTP] Background send failed:", error?.message || error);
+      });
+    }, delayMs);
+  }
+
   route("POST", "/api/auth/register", async ({ req, store, body }) => {
     requireFields(body, ["name", "email", "password"]);
     const email = normalizeEmail(body.email);
@@ -218,7 +227,7 @@ export function registerAuthRoutes(ctx) {
 
         await store.save();
 
-        await sendOtpEmail({ email, otpCode });
+        queueOtpEmail(email, otpCode);
 
         return {
           status: "pending_verification",
@@ -267,7 +276,7 @@ export function registerAuthRoutes(ctx) {
       await store.save();
     }
 
-    await sendOtpEmail({ email, otpCode });
+    queueOtpEmail(email, otpCode);
 
     return {
       status: "pending_verification",
@@ -343,7 +352,7 @@ export function registerAuthRoutes(ctx) {
 
     await store.save();
 
-    await sendOtpEmail({ email, otpCode });
+    queueOtpEmail(email, otpCode);
 
     return {
       success: true,

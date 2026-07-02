@@ -9,6 +9,19 @@ const server = await createServer({ dbPath });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const address = server.address();
 const baseUrl = `http://127.0.0.1:${address.port}`;
+const originalConsoleLog = console.log;
+const originalSmtpUser = process.env.SMTP_USER;
+const originalSmtpPass = process.env.SMTP_PASS;
+let latestOtpCode = "";
+
+process.env.SMTP_USER = "";
+process.env.SMTP_PASS = "";
+console.log = (...args) => {
+  const message = args.join(" ");
+  const match = message.match(/\b(\d{6})\b/);
+  if (match) latestOtpCode = match[1];
+  originalConsoleLog(...args);
+};
 
 async function request(pathname, options = {}) {
   const response = await fetch(`${baseUrl}${pathname}`, {
@@ -38,6 +51,14 @@ function localDateString(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+async function waitForOtpCode(timeoutMs = 6000) {
+  const startedAt = Date.now();
+  while (!latestOtpCode && Date.now() - startedAt < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return latestOtpCode;
+}
+
 try {
   const email = `flow-${Date.now()}@example.com`;
   const password = "Flow@123456";
@@ -46,8 +67,16 @@ try {
     method: "POST",
     body: JSON.stringify({ name: "Flow Test", email, password }),
   });
-  assert.ok(registered.token);
-  assert.equal(registered.member.email, email);
+  assert.equal(registered.status, "pending_verification");
+  assert.equal(registered.email, email);
+  assert.ok(await waitForOtpCode());
+
+  const { json: verified } = await request("/api/auth/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ email, otp: latestOtpCode }),
+  });
+  assert.ok(verified.token);
+  assert.equal(verified.member.email, email);
 
   const { json: loggedIn } = await request("/api/auth/login", {
     method: "POST",
@@ -156,6 +185,9 @@ try {
 
   console.log(`Controller flow test passed against ${baseUrl}`);
 } finally {
+  console.log = originalConsoleLog;
+  process.env.SMTP_USER = originalSmtpUser;
+  process.env.SMTP_PASS = originalSmtpPass;
   await new Promise((resolve) => server.close(resolve));
   await unlink(dbPath).catch(() => {});
 }

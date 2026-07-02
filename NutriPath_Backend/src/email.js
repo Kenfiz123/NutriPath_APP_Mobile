@@ -1,5 +1,10 @@
 import nodemailer from "nodemailer";
 
+function envTimeoutMs(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 export async function sendOtpEmail({ email, otpCode }) {
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
   const port = Number(process.env.SMTP_PORT || 587);
@@ -7,6 +12,10 @@ export async function sendOtpEmail({ email, otpCode }) {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const from = process.env.SMTP_FROM || `NutriPath <${user}>`;
+  const connectionTimeout = envTimeoutMs("SMTP_CONNECTION_TIMEOUT_MS", 5000);
+  const greetingTimeout = envTimeoutMs("SMTP_GREETING_TIMEOUT_MS", 5000);
+  const socketTimeout = envTimeoutMs("SMTP_SOCKET_TIMEOUT_MS", 8000);
+  const sendTimeout = envTimeoutMs("SMTP_SEND_TIMEOUT_MS", 9000);
 
   const subject = "Mã xác thực OTP kích hoạt tài khoản NutriPath";
   const htmlContent = `
@@ -33,27 +42,44 @@ export async function sendOtpEmail({ email, otpCode }) {
     return { success: false, mode: "console" };
   }
 
+  let transporter;
+  let timeoutId;
   try {
-    const transporter = nodemailer.createTransport({
+    transporter = nodemailer.createTransport({
       host,
       port,
       secure,
+      connectionTimeout,
+      greetingTimeout,
+      socketTimeout,
       auth: {
         user,
         pass,
       },
     });
 
-    const info = await transporter.sendMail({
-      from,
-      to: email,
-      subject,
-      html: htmlContent,
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(Object.assign(new Error(`SMTP send timed out after ${sendTimeout}ms.`), { code: "ESMTP_TIMEOUT" }));
+      }, sendTimeout);
     });
+    const info = await Promise.race([
+      transporter.sendMail({
+        from,
+        to: email,
+        subject,
+        html: htmlContent,
+      }),
+      timeout,
+    ]);
+    clearTimeout(timeoutId);
+    transporter.close?.();
 
     console.log(`[SMTP SUCCESS] Đã gửi email OTP tới ${email}. MessageId: ${info.messageId}`);
     return { success: true, mode: "smtp", messageId: info.messageId };
   } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
+    transporter?.close?.();
     console.error(`[SMTP ERROR] Gửi email thất bại:`, error.message);
     // Fallback print to console so app register flow doesn't break!
     console.log(`\n==============================================`);
