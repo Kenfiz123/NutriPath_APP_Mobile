@@ -55,9 +55,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       'goal': _goal,
     };
     try {
-      await ref.read(sessionControllerProvider).register(payload);
+      final result = await ref.read(sessionControllerProvider).register(payload);
       if (!mounted) return;
-      context.go(AppRoutes.dashboard);
+      if (result.unverifiedEmail != null) {
+        context.go('${AppRoutes.verifyOtp}?email=${Uri.encodeComponent(result.unverifiedEmail!)}');
+      } else {
+        context.go(AppRoutes.dashboard);
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _formError = readableError(error));

@@ -12,5 +12,9 @@ class AppRoutes {
   static const admin = '/admin';
   static const login = '/login';
   static const register = '/register';
+  static const verifyOtp = '/verify-otp';
+  static const friends = '/friends';
+  static const userProfile = '/friends/profile';
+  static const friendChat = '/friends/chat';
   static const root = '/';
 }

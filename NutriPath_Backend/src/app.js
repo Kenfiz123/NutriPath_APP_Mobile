@@ -685,6 +685,7 @@ function memberFromRegistration(store, body, id = null) {
     role: "member",
     status: "active",
     tier,
+    verified: body.verified !== undefined ? body.verified : false,
     gender: body.gender || "female",
     age: Number(body.age || 25),
     weightKg: Number(body.weightKg || 65),
@@ -3715,6 +3716,9 @@ export async function createServer(options = {}) {
         rawBody,
       });
 
+      if (payload && payload.__isSSE__) {
+        return;
+      }
       const status = req.method === "POST" ? 201 : 200;
       sendJson(req, res, status, payload);
     } catch (error) {

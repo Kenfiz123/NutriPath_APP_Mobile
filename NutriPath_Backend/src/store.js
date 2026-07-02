@@ -29,6 +29,8 @@ async function ensureFile(filePath) {
 function normalizeCatalogData(db) {
   if (!db || typeof db !== "object") return db;
 
+  if (!Array.isArray(db.friendships)) db.friendships = [];
+  if (!Array.isArray(db.friendChats)) db.friendChats = [];
   if (!Array.isArray(db.foods) || db.foods.length === 0) db.foods = clone(seedData.foods);
   const syncedFoods = [...healthyVietnameseFoods, ...healthyBeverageFoods];
   const syncedFoodIds = new Set(syncedFoods.map((food) => food.id));
@@ -90,6 +92,7 @@ export async function createStore(options = {}) {
     const persistData = useAppState ? persistSupabaseData : persistSupabaseNormalizedData;
     const resetData = useAppState ? resetSupabaseData : resetSupabaseNormalizedData;
     let cache = normalizeCatalogData(await loadData());
+    let savePromise = Promise.resolve();
 
     return {
       filePath: useAppState ? "supabase:app-state" : "supabase:normalized",
@@ -102,7 +105,9 @@ export async function createStore(options = {}) {
         return cache;
       },
       async save() {
-        await persistData(cache);
+        const nextSave = savePromise.then(() => persistData(cache));
+        savePromise = nextSave.catch(() => {});
+        await nextSave;
         return cache;
       },
       async reset() {
@@ -122,6 +127,7 @@ export async function createStore(options = {}) {
   await ensureFile(filePath);
 
   let cache = normalizeCatalogData(JSON.parse(await readFile(filePath, "utf8")));
+  let savePromise = Promise.resolve();
 
   async function persist() {
     await mkdir(path.dirname(filePath), { recursive: true });
@@ -138,7 +144,9 @@ export async function createStore(options = {}) {
       return cache;
     },
     async save() {
-      await persist();
+      const nextSave = savePromise.then(() => persist());
+      savePromise = nextSave.catch(() => {});
+      await nextSave;
       return cache;
     },
     async reset() {

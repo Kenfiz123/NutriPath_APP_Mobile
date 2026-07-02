@@ -1006,3 +1006,138 @@ class AdminOverview {
   final List<JsonMap> tierBreakdown;
   final List<JsonMap> topRecipes;
 }
+
+class Friend {
+  const Friend({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.initials,
+    required this.tier,
+    required this.friendshipStatus,
+  });
+
+  factory Friend.fromJson(Object? value) {
+    final json = asJsonMap(value);
+    return Friend(
+      id: asString(json['id']),
+      name: asString(json['name'], 'User'),
+      email: asString(json['email']),
+      initials: asString(json['initials'], 'U'),
+      tier: asString(json['tier'], 'free'),
+      friendshipStatus: asString(json['friendshipStatus'], 'none'),
+    );
+  }
+
+  final String id;
+  final String name;
+  final String email;
+  final String initials;
+  final String tier;
+  final String friendshipStatus;
+}
+
+class FriendRequest {
+  const FriendRequest({
+    required this.id,
+    required this.friendId,
+    required this.name,
+    required this.initials,
+    required this.email,
+    required this.tier,
+    required this.createdAt,
+  });
+
+  factory FriendRequest.fromJson(Object? value) {
+    final json = asJsonMap(value);
+    return FriendRequest(
+      id: asString(json['id']),
+      friendId: asString(json['friendId']),
+      name: asString(json['name'], 'User'),
+      initials: asString(json['initials'], 'U'),
+      email: asString(json['email']),
+      tier: asString(json['tier'], 'free'),
+      createdAt: asString(json['createdAt']),
+    );
+  }
+
+  final String id;
+  final String friendId;
+  final String name;
+  final String initials;
+  final String email;
+  final String tier;
+  final String createdAt;
+}
+
+class PublicProfile {
+  const PublicProfile({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.initials,
+    required this.tier,
+    required this.gender,
+    required this.age,
+    required this.calorieTarget,
+    required this.waterTargetGlasses,
+    required this.goal,
+    required this.friendshipStatus,
+  });
+
+  factory PublicProfile.fromJson(Object? value) {
+    final json = asJsonMap(value);
+    return PublicProfile(
+      id: asString(json['id']),
+      name: asString(json['name'], 'User'),
+      email: asString(json['email']),
+      initials: asString(json['initials'], 'U'),
+      tier: asString(json['tier'], 'free'),
+      gender: asString(json['gender'], 'secret'),
+      age: asInt(json['age'], 25),
+      calorieTarget: asInt(json['calorieTarget'], 2000),
+      waterTargetGlasses: asInt(json['waterTargetGlasses'], 8),
+      goal: asString(json['goal'], 'maintain'),
+      friendshipStatus: asString(json['friendshipStatus'], 'none'),
+    );
+  }
+
+  final String id;
+  final String name;
+  final String email;
+  final String initials;
+  final String tier;
+  final String gender;
+  final int age;
+  final int calorieTarget;
+  final int waterTargetGlasses;
+  final String goal;
+  final String friendshipStatus;
+}
+
+class FriendChatMessage {
+  const FriendChatMessage({
+    required this.id,
+    required this.senderId,
+    required this.receiverId,
+    required this.text,
+    required this.createdAt,
+  });
+
+  factory FriendChatMessage.fromJson(Object? value) {
+    final json = asJsonMap(value);
+    return FriendChatMessage(
+      id: asString(json['id']),
+      senderId: asString(json['senderId']),
+      receiverId: asString(json['receiverId']),
+      text: asString(json['text']),
+      createdAt: asString(json['createdAt']),
+    );
+  }
+
+  final String id;
+  final String senderId;
+  final String receiverId;
+  final String text;
+  final String createdAt;
+}

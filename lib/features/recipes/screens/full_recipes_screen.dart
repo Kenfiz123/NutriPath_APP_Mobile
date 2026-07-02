@@ -19,16 +19,7 @@ class FullRecipesScreen extends ConsumerStatefulWidget {
 
 class _FullRecipesScreenState extends ConsumerState<FullRecipesScreen> {
   final _search = TextEditingController();
-  late Future<RecipeCollection> _future;
-  Future<List<Recipe>>? _savedFuture;
   String _tag = 'Tất cả';
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _load();
-    _savedFuture = ref.read(apiClientProvider).getPersonalizedRecipes();
-  }
 
   @override
   void dispose() {
@@ -36,34 +27,28 @@ class _FullRecipesScreenState extends ConsumerState<FullRecipesScreen> {
     super.dispose();
   }
 
-  Future<RecipeCollection> _load() {
-    return ref
-        .read(apiClientProvider)
-        .getRecipes(search: _search.text.trim(), tag: _tag);
-  }
-
-  void _reload() {
-    setState(() {
-      _future = _load();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final arg = (search: _search.text.trim(), tag: _tag);
+    final asyncRecipes = ref.watch(fullRecipesProvider(arg));
+    final asyncSaved = ref.watch(personalizedRecipesProvider);
+
     return RefreshIndicator(
-      onRefresh: () async => _reload(),
-      child: FutureBuilder<RecipeCollection>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return NutriPage(
-              children: [
-                ErrorPanel(error: snapshot.error!, onRetry: _reload)
-              ],
-            );
-          }
-          if (!snapshot.hasData) return const LoadingPanel();
-          final data = snapshot.data!;
+      onRefresh: () async {
+        ref.invalidate(fullRecipesProvider(arg));
+        ref.invalidate(personalizedRecipesProvider);
+      },
+      child: asyncRecipes.when(
+        loading: () => const LoadingPanel(),
+        error: (err, stack) => NutriPage(
+          children: [
+            ErrorPanel(
+              error: err,
+              onRetry: () => ref.invalidate(fullRecipesProvider(arg)),
+            ),
+          ],
+        ),
+        data: (data) {
           final tags = ['Tất cả', ...data.tags];
           return NutriPage(
             children: [
@@ -86,7 +71,9 @@ class _FullRecipesScreenState extends ConsumerState<FullRecipesScreen> {
                         prefixIcon: Icon(Icons.search),
                         labelText: 'Tìm món hoặc nguyên liệu',
                       ),
-                      onSubmitted: (_) => _reload(),
+                      onSubmitted: (_) {
+                        setState(() {});
+                      },
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -101,7 +88,6 @@ class _FullRecipesScreenState extends ConsumerState<FullRecipesScreen> {
                             onSelected: (_) {
                               setState(() {
                                 _tag = tag;
-                                _future = _load();
                               });
                             },
                           );
@@ -120,10 +106,10 @@ class _FullRecipesScreenState extends ConsumerState<FullRecipesScreen> {
                   message:
                       'Nâng cấp để xem thêm công thức và dùng AI cá nhân hóa.',
                 ),
-              FutureBuilder<List<Recipe>>(
-                future: _savedFuture,
-                builder: (context, savedSnapshot) {
-                  final saved = savedSnapshot.data ?? const <Recipe>[];
+              asyncSaved.when(
+                loading: () => const SizedBox.shrink(),
+                error: (err, stack) => const SizedBox.shrink(),
+                data: (saved) {
                   if (saved.isEmpty) return const SizedBox.shrink();
                   return RecipeHorizontalList(
                     title: 'Đã cá nhân hóa',
@@ -176,9 +162,7 @@ class _FullRecipesScreenState extends ConsumerState<FullRecipesScreen> {
         });
       }
       final recipe = Recipe.fromJson(result['recipe']);
-      setState(() {
-        _savedFuture = api.getPersonalizedRecipes();
-      });
+      ref.invalidate(personalizedRecipesProvider);
       if (context.mounted) {
         showSnack(context, 'Đã tạo công thức cá nhân hóa.');
         await showRecipeDetails(context, recipe);

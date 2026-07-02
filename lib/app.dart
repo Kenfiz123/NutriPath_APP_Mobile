@@ -10,6 +10,7 @@ import 'core/constants/app_sizes.dart';
 import 'features/admin/screens/admin_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
+import 'features/auth/screens/otp_verification_screen.dart';
 import 'features/calculator/screens/full_calculator_screen.dart';
 import 'features/chat/widgets/chat_sheet.dart';
 import 'features/checkout/screens/full_checkout_screen.dart';
@@ -17,6 +18,9 @@ import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/meal_tracker/screens/meal_tracker_screen.dart';
 import 'features/pricing/screens/full_pricing_screen.dart';
 import 'features/profile/screens/full_profile_screen.dart';
+import 'features/profile/screens/friends_screen.dart';
+import 'features/profile/screens/user_profile_screen.dart';
+import 'features/profile/screens/friend_chat_screen.dart';
 import 'features/recipes/screens/full_recipes_screen.dart';
 import 'features/reports/screens/full_reports_screen.dart';
 
@@ -30,6 +34,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     AppRoutes.reports,
     AppRoutes.profile,
     AppRoutes.checkout,
+    AppRoutes.friends,
+    AppRoutes.userProfile,
+    AppRoutes.friendChat,
   };
 
   return GoRouter(
@@ -38,7 +45,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       if (!session.initialized) return null;
       final path = state.uri.path;
-      final isAuthPage = path == AppRoutes.login || path == AppRoutes.register;
+      final isAuthPage = path == AppRoutes.login || path == AppRoutes.register || path == AppRoutes.verifyOtp;
       if (isAuthPage && session.isLoggedIn) return AppRoutes.dashboard;
       if (protectedPaths.contains(path) && !session.isLoggedIn) {
         final from = Uri.encodeComponent(state.uri.toString());
@@ -59,6 +66,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.register,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyOtp,
+        builder: (context, state) => OtpVerificationScreen(
+          email: state.uri.queryParameters['email'] ?? '',
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -103,6 +116,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.admin,
             builder: (context, state) => const FullAdminScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.friends,
+            builder: (context, state) => const FriendsScreen(),
+          ),
+          GoRoute(
+            path: '${AppRoutes.userProfile}/:id',
+            builder: (context, state) => UserProfileScreen(
+              userId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '${AppRoutes.friendChat}/:id',
+            builder: (context, state) => FriendChatScreen(
+              friendId: state.pathParameters['id']!,
+            ),
           ),
         ],
       ),

@@ -7,6 +7,7 @@ import { registerRecipesRoutes } from "./recipes.controller.js";
 import { registerBillingRoutes } from "./billing.controller.js";
 import { registerChatRoutes } from "./chat.controller.js";
 import { registerAdminRoutes } from "./admin.controller.js";
+import { registerFriendsRoutes } from "./friends.controller.js";
 
 const routeRegistrars = [
   registerCoreRoutes,
@@ -18,6 +19,7 @@ const routeRegistrars = [
   registerBillingRoutes,
   registerChatRoutes,
   registerAdminRoutes,
+  registerFriendsRoutes,
 ];
 
 export function registerControllers(ctx) {

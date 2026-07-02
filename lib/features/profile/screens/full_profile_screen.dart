@@ -17,102 +17,83 @@ class FullProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _FullProfileScreenState extends ConsumerState<FullProfileScreen> {
-  late Future<_ProfileBundle> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _load();
-  }
-
-  Future<_ProfileBundle> _load() async {
-    final api = ref.read(apiClientProvider);
-    final results = await Future.wait<Object>([
-      api.getProfile(),
-      api.getNotifications(limit: 8),
-      api.getPayments(),
-    ]);
-    return _ProfileBundle(
-      profile: results[0] as JsonMap,
-      notifications: results[1] as List<AppNotification>,
-      payments: results[2] as List<Payment>,
-    );
-  }
-
-  void _reload() {
-    setState(() {
-      _future = _load();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final member = ref.watch(sessionControllerProvider).member;
     if (member == null) return const LoginPrompt();
-    return FutureBuilder<_ProfileBundle>(
-      future: _future,
-      builder: (context, snapshot) {
-        final profile = snapshot.data?.profile ?? const <String, dynamic>{};
-        final plan = asJsonMap(profile['plan']);
-        final benefits = jsonMapList(profile['benefits']);
-        final notifications =
-            snapshot.data?.notifications ?? const <AppNotification>[];
-        final payments = snapshot.data?.payments ?? const <Payment>[];
-        return NutriPage(
+    final asyncBundle = ref.watch(profileBundleProvider);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(profileBundleProvider);
+      },
+      child: asyncBundle.when(
+        loading: () => const LoadingPanel(),
+        error: (err, stack) => NutriPage(
           children: [
-            NutriCard(
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 42,
-                    backgroundColor: AppColors.primary.withValues(
-                      alpha: 0.12,
+            ErrorPanel(
+              error: err,
+              onRetry: () => ref.invalidate(profileBundleProvider),
+            ),
+          ],
+        ),
+        data: (bundle) {
+          final profile = bundle.profile;
+          final plan = asJsonMap(profile['plan']);
+          final benefits = jsonMapList(profile['benefits']);
+          final notifications = bundle.notifications;
+          final payments = bundle.payments;
+
+          return NutriPage(
+            children: [
+              NutriCard(
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 42,
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.12,
+                      ),
+                      child: Text(
+                        member.initials,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      member.initials,
+                    const SizedBox(height: 14),
+                    Text(
+                      member.name,
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    member.name,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
+                    Text(
+                      member.email,
+                      style: const TextStyle(color: AppColors.muted),
                     ),
-                  ),
-                  Text(
-                    member.email,
-                    style: const TextStyle(color: AppColors.muted),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      TierChip(tier: member.tier),
-                      Chip(label: Text('${member.calorieTarget} kcal/ngày')),
-                      Chip(label: Text('${member.waterTargetGlasses} ly nước')),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.tonalIcon(
-                    onPressed: () => _editProfile(context, member),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Chỉnh hồ sơ'),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        TierChip(tier: member.tier),
+                        Chip(label: Text('${member.calorieTarget} kcal/ngày')),
+                        Chip(label: Text('${member.waterTargetGlasses} ly nước')),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.tonalIcon(
+                      onPressed: () => _editProfile(context, member),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Chỉnh hồ sơ'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (snapshot.hasError)
-              ErrorPanel(error: snapshot.error!, onRetry: _reload)
-            else if (!snapshot.hasData)
-              const LoadingPanel()
-            else ...[
               NutriCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,7 +123,7 @@ class _FullProfileScreenState extends ConsumerState<FullProfileScreen> {
                         children: [
                           Icon(
                             asBool(benefit['included'])
-                               ? Icons.check_circle
+                                ? Icons.check_circle
                                 : Icons.remove_circle_outline,
                             color: asBool(benefit['included'])
                                 ? AppColors.emerald
@@ -167,7 +148,7 @@ class _FullProfileScreenState extends ConsumerState<FullProfileScreen> {
                           await ref
                               .read(apiClientProvider)
                               .markAllNotificationsRead();
-                          _reload();
+                          ref.invalidate(profileBundleProvider);
                         },
                         child: const Text('Đã đọc'),
                       ),
@@ -200,7 +181,7 @@ class _FullProfileScreenState extends ConsumerState<FullProfileScreen> {
                                   await ref
                                       .read(apiClientProvider)
                                       .markNotificationRead(item.id);
-                                  _reload();
+                                  ref.invalidate(profileBundleProvider);
                                 }
                               : null,
                         ),
@@ -225,21 +206,30 @@ class _FullProfileScreenState extends ConsumerState<FullProfileScreen> {
                   ],
                 ),
               ),
-            ],
-            NutriCard(
-              padding: EdgeInsets.zero,
-              child: ListTile(
-                leading: const Icon(Icons.logout, color: AppColors.red),
-                title: const Text('Đăng xuất'),
-                onTap: () async {
-                  await ref.read(sessionControllerProvider).logout();
-                  if (context.mounted) context.go(AppRoutes.login);
-                },
+              NutriCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  leading: const Icon(Icons.people_outline, color: AppColors.primary),
+                  title: const Text('Bạn bè & Tìm kiếm'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.go(AppRoutes.friends),
+                ),
               ),
-            ),
-          ],
-        );
-      },
+              NutriCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  leading: const Icon(Icons.logout, color: AppColors.red),
+                  title: const Text('Đăng xuất'),
+                  onTap: () async {
+                    await ref.read(sessionControllerProvider).logout();
+                    if (context.mounted) context.go(AppRoutes.login);
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -256,22 +246,10 @@ class _FullProfileScreenState extends ConsumerState<FullProfileScreen> {
           .read(apiClientProvider)
           .updateMemberProfile(payload);
       await ref.read(sessionControllerProvider).syncMember(updated);
-      _reload();
+      ref.invalidate(profileBundleProvider);
       if (context.mounted) showSnack(context, 'Đã cập nhật hồ sơ.');
     } catch (e) {
       if (context.mounted) showSnack(context, readableError(e));
     }
   }
-}
-
-class _ProfileBundle {
-  const _ProfileBundle({
-    required this.profile,
-    required this.notifications,
-    required this.payments,
-  });
-
-  final JsonMap profile;
-  final List<AppNotification> notifications;
-  final List<Payment> payments;
 }

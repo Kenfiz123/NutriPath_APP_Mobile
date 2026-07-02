@@ -44,7 +44,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context.go(widget.from ?? AppRoutes.dashboard);
     } catch (error) {
       if (!mounted) return;
-      setState(() => _formError = readableError(error));
+      if (error is ApiException && error.code == 'unverified') {
+        final email = error.payload?['email']?.toString() ?? _email.text.trim();
+        context.go('${AppRoutes.verifyOtp}?email=${Uri.encodeComponent(email)}');
+      } else {
+        setState(() => _formError = readableError(error));
+      }
     }
   }
 

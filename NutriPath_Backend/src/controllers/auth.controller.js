@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { sendOtpEmail } from "../email.js";
 
 export function registerAuthRoutes(ctx) {
   const {
@@ -191,15 +192,53 @@ export function registerAuthRoutes(ctx) {
     if (password.length < 6) badRequest("Mật khẩu cần ít nhất 6 ký tự.");
 
     const credentials = ensureAuthCredentials(store.db);
-    if (findCredentialByEmail(store.db, email)) {
-      conflict("Email này đã có tài khoản đăng nhập.");
+    const existingCredential = findCredentialByEmail(store.db, email);
+    let member = findMemberByEmail(store.db, email);
+
+    if (existingCredential) {
+      const existingMember = getMember(store.db, existingCredential.memberId) || member;
+      if (existingMember && existingMember.verified === false) {
+        existingMember.name = String(body.name || "").trim();
+        existingMember.initials = body.initials || initialsFromName(existingMember.name);
+        existingMember.gender = body.gender || "female";
+        existingMember.age = Number(body.age || 25);
+        existingMember.weightKg = Number(body.weightKg || 65);
+        existingMember.heightCm = Number(body.heightCm || 168);
+        existingMember.activityLevel = body.activityLevel || "light";
+        existingMember.goal = body.goal || "maintain";
+
+        const otpCode = String(100000 + Math.floor(Math.random() * 900000));
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        existingMember.otpCode = otpCode;
+        existingMember.otpExpiry = otpExpiry;
+
+        const hashed = hashPassword(password);
+        existingCredential.passwordHash = hashed.passwordHash;
+        existingCredential.passwordSalt = hashed.passwordSalt;
+
+        await store.save();
+
+        await sendOtpEmail({ email, otpCode });
+
+        return {
+          status: "pending_verification",
+          email,
+          message: "Mã OTP xác thực mới đã được gửi về email của bạn.",
+        };
+      } else {
+        conflict("Email này đã có tài khoản đăng nhập.");
+      }
     }
 
-    let member = findMemberByEmail(store.db, email);
     const isNewMember = !member;
     if (!member) {
-      member = memberFromRegistration(store, { ...body, email });
+      member = memberFromRegistration(store, { ...body, email, verified: false });
     }
+
+    const otpCode = String(100000 + Math.floor(Math.random() * 900000));
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    member.otpCode = otpCode;
+    member.otpExpiry = otpExpiry;
 
     const hashed = hashPassword(password);
     const credential = {
@@ -215,14 +254,26 @@ export function registerAuthRoutes(ctx) {
       if (isNewMember) await insertSqlServerAuthMember(member, credential);
       else await insertSqlServerCredential(credential);
       await store.reload();
-      member = getMember(store.db, credential.memberId);
+      // Update OTP fields on the loaded SQL Server member object
+      const sqlMember = getMember(store.db, credential.memberId);
+      if (sqlMember) {
+        sqlMember.otpCode = otpCode;
+        sqlMember.otpExpiry = otpExpiry;
+      }
+      member = sqlMember || member;
     } else {
       if (isNewMember) store.db.members.push(member);
       credentials.push(credential);
       await store.save();
     }
 
-    return authSessionResponse(req, member, store.db);
+    await sendOtpEmail({ email, otpCode });
+
+    return {
+      status: "pending_verification",
+      email,
+      message: "Mã OTP xác thực đã được gửi về email của bạn.",
+    };
   });
 
   route("POST", "/api/auth/login", async ({ req, store, body }) => {
@@ -237,7 +288,67 @@ export function registerAuthRoutes(ctx) {
     const member = getMember(store.db, credential.memberId) || findMemberByEmail(store.db, email);
     if (!member) unauthorized("Tài khoản chưa gắn với hồ sơ thành viên.");
 
+    if (member.verified === false) {
+      const errRes = errorResponse(req, 403, "unverified", "Tài khoản chưa được xác thực OTP.");
+      errRes.email = member.email;
+      return sendJson(req, 403, errRes);
+    }
+
     return authSessionResponse(req, member, store.db);
+  });
+
+  route("POST", "/api/auth/verify-otp", async ({ req, store, body }) => {
+    requireFields(body, ["email", "otp"]);
+    const email = normalizeEmail(body.email);
+    const otp = String(body.otp).trim();
+
+    const member = findMemberByEmail(store.db, email);
+    if (!member) notFound(req, "Không tìm thấy hồ sơ thành viên.");
+
+    if (!member.otpCode || !member.otpExpiry) {
+      badRequest("Không tìm thấy yêu cầu xác thực OTP hoặc mã OTP chưa được tạo.");
+    }
+
+    if (new Date().toISOString() > member.otpExpiry) {
+      badRequest("Mã OTP đã hết hạn. Vui lòng gửi lại mã.");
+    }
+
+    if (member.otpCode !== otp) {
+      badRequest("Mã OTP không đúng.");
+    }
+
+    member.verified = true;
+    member.otpCode = null;
+    member.otpExpiry = null;
+
+    await store.save();
+
+    console.log(`[EMAIL OTP] Xác thực thành công cho email: ${email}`);
+
+    return authSessionResponse(req, member, store.db);
+  });
+
+  route("POST", "/api/auth/resend-otp", async ({ req, store, body }) => {
+    requireFields(body, ["email"]);
+    const email = normalizeEmail(body.email);
+
+    const member = findMemberByEmail(store.db, email);
+    if (!member) notFound(req, "Không tìm thấy hồ sơ thành viên.");
+
+    const otpCode = String(100000 + Math.floor(Math.random() * 900000));
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    member.otpCode = otpCode;
+    member.otpExpiry = otpExpiry;
+
+    await store.save();
+
+    await sendOtpEmail({ email, otpCode });
+
+    return {
+      success: true,
+      message: "Mã OTP mới đã được gửi về email của bạn.",
+    };
   });
 
   route("POST", "/api/auth/supabase", async ({ req, store, body }) => {

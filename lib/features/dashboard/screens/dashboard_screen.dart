@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_services.dart';
-import '../../../core/models.dart';
 import '../../../core/widgets.dart';
 import '../widgets/action_row.dart';
 import '../widgets/ai_tips_card.dart';
@@ -11,45 +10,31 @@ import '../widgets/greeting_header.dart';
 import '../widgets/progress_card.dart';
 import '../widgets/stats_grid.dart';
 
-class DashboardScreen extends ConsumerStatefulWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  Future<DashboardData>? _future;
-
-  void _reload() => setState(() {
-        _future = ref
-            .read(apiClientProvider)
-            .getDashboard(date: localDateString());
-      });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);
     if (!session.isLoggedIn) return const LoginPrompt();
-    final future = _future ??=
-        ref.read(apiClientProvider).getDashboard(date: localDateString());
+
+    final date = localDateString();
+    final asyncData = ref.watch(dashboardDataProvider(date));
 
     return RefreshIndicator(
-      onRefresh: () async => _reload(),
-      child: FutureBuilder<DashboardData>(
-        future: future,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return NutriPage(
-              children: [
-                ErrorPanel(error: snapshot.error!, onRetry: _reload)
-              ],
-            );
-          }
-          if (!snapshot.hasData) return const LoadingPanel();
-          final data = snapshot.data!;
+      onRefresh: () => ref.refresh(dashboardDataProvider(date).future),
+      child: asyncData.when(
+        loading: () => const LoadingPanel(),
+        error: (err, stack) => NutriPage(
+          children: [
+            ErrorPanel(
+              error: err,
+              onRetry: () => ref.refresh(dashboardDataProvider(date)),
+            ),
+          ],
+        ),
+        data: (data) {
           final n = data.nutrition;
-
           return NutriPage(
             children: [
               GreetingHeader(data: data),

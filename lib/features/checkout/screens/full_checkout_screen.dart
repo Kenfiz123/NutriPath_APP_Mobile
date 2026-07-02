@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/app_services.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/models.dart';
 import '../../../core/widgets.dart';
@@ -27,7 +28,7 @@ class FullCheckoutScreen extends ConsumerStatefulWidget {
 
 class _FullCheckoutScreenState extends ConsumerState<FullCheckoutScreen> {
   final _discount = TextEditingController();
-  String _paymentMethod = 'stripe';
+  final String _paymentMethod = 'stripe';
   String? _stripeSessionId;
   int _trialDays = 0;
   bool _busy = false;
@@ -125,25 +126,16 @@ class _FullCheckoutScreenState extends ConsumerState<FullCheckoutScreen> {
                       });
                     },
                   ),
-                  DropdownButtonFormField<String>(
-                    initialValue: _paymentMethod,
-                    decoration: const InputDecoration(labelText: 'Phương thức'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'stripe',
-                        child: Text('Stripe trong app'),
-                      ),
-                      DropdownMenuItem(value: 'demo', child: Text('Ví demo')),
-                      DropdownMenuItem(value: 'card', child: Text('Thẻ demo')),
-                      DropdownMenuItem(
-                        value: 'bank_transfer',
-                        child: Text('Chuyển khoản demo'),
-                      ),
-                    ],
-                    onChanged: (value) => setState(() {
-                      _paymentMethod = value ?? _paymentMethod;
-                      if (_paymentMethod != 'stripe') _stripeSessionId = null;
-                    }),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Phương thức thanh toán:',
+                    style: TextStyle(fontSize: 13, color: AppColors.muted),
+                  ),
+                  const Text(
+                    'Stripe (Thanh toán bảo mật trong app)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),

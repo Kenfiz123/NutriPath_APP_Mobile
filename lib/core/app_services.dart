@@ -15,6 +15,16 @@ class AppConfig {
 
   static String get apiBaseUrl {
     if (_definedBaseUrl.trim().isNotEmpty) return _definedBaseUrl.trim();
+    if (kReleaseMode) {
+      return 'https://nutripath-app-mobile.onrender.com';
+    }
+    if (kIsWeb) {
+      final origin = Uri.base.origin;
+      if (origin.contains('localhost') || origin.contains('127.0.0.1')) {
+        return 'http://127.0.0.1:8080';
+      }
+      return 'https://nutripath-app-mobile.onrender.com';
+    }
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8080';
     }
@@ -23,14 +33,22 @@ class AppConfig {
 }
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.statusCode, this.code});
+  const ApiException(this.message, {this.statusCode, this.code, this.payload});
 
   final String message;
   final int? statusCode;
   final String? code;
+  final JsonMap? payload;
 
   @override
   String toString() => message;
+}
+
+class RegisterResult {
+  RegisterResult({this.session, this.unverifiedEmail, this.message});
+  final AuthSession? session;
+  final String? unverifiedEmail;
+  final String? message;
 }
 
 class ApiClient {
@@ -107,6 +125,7 @@ class ApiClient {
         message,
         statusCode: response.statusCode,
         code: error['code']?.toString(),
+        payload: payload,
       );
     }
 
@@ -131,14 +150,39 @@ class ApiClient {
     return AuthSession.fromJson(json);
   }
 
-  Future<AuthSession> register(JsonMap payload) async {
+  Future<RegisterResult> register(JsonMap payload) async {
     final json = await _request(
       '/api/auth/register',
       method: 'POST',
       auth: false,
       body: payload,
     );
+    if (json['status'] == 'pending_verification') {
+      return RegisterResult(
+        unverifiedEmail: asString(json['email']),
+        message: asString(json['message']),
+      );
+    }
+    return RegisterResult(session: AuthSession.fromJson(json));
+  }
+
+  Future<AuthSession> verifyOtp(String email, String otp) async {
+    final json = await _request(
+      '/api/auth/verify-otp',
+      method: 'POST',
+      auth: false,
+      body: {'email': email, 'otp': otp},
+    );
     return AuthSession.fromJson(json);
+  }
+
+  Future<void> resendOtp(String email) async {
+    await _request(
+      '/api/auth/resend-otp',
+      method: 'POST',
+      auth: false,
+      body: {'email': email},
+    );
   }
 
   Future<Member> getMe() async {
@@ -475,6 +519,70 @@ class ApiClient {
     return _request('/api/members/${_memberId()}/profile');
   }
 
+  Future<List<Friend>> getFriends() async {
+    final json = await _request('/api/friends');
+    return embeddedList(json, 'friends').map(Friend.fromJson).toList();
+  }
+
+  Future<List<Friend>> searchUsers(String query) async {
+    final encoded = Uri.encodeQueryComponent(query);
+    final json = await _request('/api/friends/search?query=$encoded');
+    return embeddedList(json, 'friends').map(Friend.fromJson).toList();
+  }
+
+  Future<void> sendFriendRequest(String friendId) async {
+    await _request(
+      '/api/friends/request',
+      method: 'POST',
+      body: {'friendId': friendId},
+    );
+  }
+
+  Future<({List<FriendRequest> incoming, List<FriendRequest> outgoing})> getFriendRequests() async {
+    final json = await _request('/api/friends/requests');
+    final incomingList = json['incoming'] as List? ?? [];
+    final outgoingList = json['outgoing'] as List? ?? [];
+    return (
+      incoming: incomingList.map(FriendRequest.fromJson).toList(),
+      outgoing: outgoingList.map(FriendRequest.fromJson).toList(),
+    );
+  }
+
+  Future<void> respondFriendRequest(String friendId, bool accept) async {
+    await _request(
+      '/api/friends/respond',
+      method: 'POST',
+      body: {'friendId': friendId, 'accept': accept},
+    );
+  }
+
+  Future<void> removeFriend(String friendId) async {
+    await _request(
+      '/api/friends/remove',
+      method: 'POST',
+      body: {'friendId': friendId},
+    );
+  }
+
+  Future<PublicProfile> getPublicProfile(String memberId) async {
+    final json = await _request('/api/friends/profile/$memberId');
+    return PublicProfile.fromJson(json);
+  }
+
+  Future<List<FriendChatMessage>> getFriendChatHistory(String friendId) async {
+    final json = await _request('/api/friends/chats/$friendId');
+    return embeddedList(json, 'chats').map(FriendChatMessage.fromJson).toList();
+  }
+
+  Future<FriendChatMessage> sendFriendChatMessage(String friendId, String text) async {
+    final json = await _request(
+      '/api/friends/chats/$friendId',
+      method: 'POST',
+      body: {'text': text},
+    );
+    return FriendChatMessage.fromJson(json);
+  }
+
   Future<Member> updateMemberProfile(
     JsonMap payload, {
     String? memberId,
@@ -658,10 +766,21 @@ class SessionController extends ChangeNotifier {
     });
   }
 
-  Future<void> register(JsonMap payload) async {
+  Future<RegisterResult> register(JsonMap payload) async {
+    RegisterResult? result;
     await _run(() async {
-      final next = await api.register(payload);
-      await _setSession(next);
+      result = await api.register(payload);
+      if (result!.session != null) {
+        await _setSession(result!.session!);
+      }
+    });
+    return result!;
+  }
+
+  Future<void> verifyOtp(String email, String otp) async {
+    await _run(() async {
+      final session = await api.verifyOtp(email, otp);
+      await _setSession(session);
     });
   }
 
@@ -742,4 +861,79 @@ final sessionControllerProvider = ChangeNotifierProvider<SessionController>((
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ref.watch(sessionControllerProvider).api;
+});
+
+final dashboardDataProvider = FutureProvider.family<DashboardData, String>((ref, date) async {
+  return ref.read(apiClientProvider).getDashboard(date: date);
+});
+
+final recipesProvider = FutureProvider<RecipeCollection>((ref) async {
+  return ref.read(apiClientProvider).getRecipes();
+});
+
+final nutritionReportProvider = FutureProvider<NutritionReport>((ref) async {
+  return ref.read(apiClientProvider).getNutritionReport();
+});
+
+final mealLogProvider = FutureProvider.family<MealLog, String>((ref, date) async {
+  return ref.read(apiClientProvider).getMealLog(date);
+});
+
+final fullRecipesProvider = FutureProvider.family<RecipeCollection, ({String search, String tag})>((ref, arg) async {
+  return ref.read(apiClientProvider).getRecipes(search: arg.search, tag: arg.tag);
+});
+
+final personalizedRecipesProvider = FutureProvider<List<Recipe>>((ref) async {
+  return ref.read(apiClientProvider).getPersonalizedRecipes();
+});
+
+final fullReportsProvider = FutureProvider.family<NutritionReport, int>((ref, days) async {
+  return ref.read(apiClientProvider).getNutritionReport(days: days);
+});
+
+class ProfileBundle {
+  const ProfileBundle({
+    required this.profile,
+    required this.notifications,
+    required this.payments,
+  });
+
+  final JsonMap profile;
+  final List<AppNotification> notifications;
+  final List<Payment> payments;
+}
+
+final profileBundleProvider = FutureProvider<ProfileBundle>((ref) async {
+  final api = ref.read(apiClientProvider);
+  final results = await Future.wait<Object>([
+    api.getProfile(),
+    api.getNotifications(limit: 8),
+    api.getPayments(),
+  ]);
+  return ProfileBundle(
+    profile: results[0] as JsonMap,
+    notifications: results[1] as List<AppNotification>,
+    payments: results[2] as List<Payment>,
+  );
+});
+
+final friendsListProvider = FutureProvider<List<Friend>>((ref) async {
+  return ref.read(apiClientProvider).getFriends();
+});
+
+final friendRequestsProvider = FutureProvider<({List<FriendRequest> incoming, List<FriendRequest> outgoing})>((ref) async {
+  return ref.read(apiClientProvider).getFriendRequests();
+});
+
+final userSearchProvider = FutureProvider.family<List<Friend>, String>((ref, query) async {
+  if (query.trim().isEmpty) return const <Friend>[];
+  return ref.read(apiClientProvider).searchUsers(query);
+});
+
+final publicProfileProvider = FutureProvider.family<PublicProfile, String>((ref, memberId) async {
+  return ref.read(apiClientProvider).getPublicProfile(memberId);
+});
+
+final friendChatHistoryProvider = FutureProvider.family<List<FriendChatMessage>, String>((ref, friendId) async {
+  return ref.read(apiClientProvider).getFriendChatHistory(friendId);
 });

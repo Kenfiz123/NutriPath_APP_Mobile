@@ -379,7 +379,7 @@ export function registerBillingRoutes(ctx) {
       daysTotal,
       daysRemaining,
     };
-    upsertNotification(store, member.id, "membership-payment", trialDays ? "ÄÃ£ kÃ­ch hoáº¡t dÃ¹ng thá»­" : "GÃ³i thÃ nh viÃªn Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t", `${plan.name} ${body.billing === "annual" ? "nÄƒm" : "thÃ¡ng"} cÃ³ hiá»‡u lá»±c Ä‘áº¿n ${renewsAt}.`, {
+    upsertNotification(store, member.id, "membership-payment", trialDays ? "Đã kích hoạt dùng thử" : "Gói thành viên đã được kích hoạt", `${plan.name} ${body.billing === "annual" ? "năm" : "tháng"} có hiệu lực đến ${renewsAt}.`, {
       key: `${member.id}:membership-payment:${payment.id}`,
       actionHref: "/member",
       priority: "high",

@@ -200,6 +200,27 @@ async function ensureNormalizedSchema(pool) {
       updated_at timestamptz NOT NULL DEFAULT now()
     );
 
+    CREATE TABLE IF NOT EXISTS ${table("nutripath_friendships")} (
+      id text PRIMARY KEY,
+      requester_id text NOT NULL,
+      addressee_id text NOT NULL,
+      status text NOT NULL,
+      data jsonb NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (requester_id, addressee_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ${table("nutripath_friend_chats")} (
+      id text PRIMARY KEY,
+      sender_id text NOT NULL,
+      receiver_id text NOT NULL,
+      message_text text NOT NULL,
+      data jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS nutripath_friend_chats_sender_receiver_idx ON ${table("nutripath_friend_chats")} (sender_id, receiver_id);
+
     CREATE INDEX IF NOT EXISTS nutripath_foods_category_idx ON ${table("nutripath_foods")} (category);
     CREATE INDEX IF NOT EXISTS nutripath_meal_logs_member_date_idx ON ${table("nutripath_meal_logs")} (member_id, log_date DESC);
     CREATE INDEX IF NOT EXISTS nutripath_payments_member_paid_idx ON ${table("nutripath_payments")} (member_id, paid_at DESC);
@@ -329,6 +350,8 @@ function normalizeInitialState(data) {
   next.aiSafetyLogs ??= [];
   next.chat ??= clone(seedData.chat);
   next.admin ??= clone(seedData.admin);
+  next.friendships ??= [];
+  next.friendChats ??= [];
   return next;
 }
 
@@ -360,6 +383,8 @@ export async function loadSupabaseNormalizedData() {
     personalFoods,
     coachPlans,
     aiSafetyLogs,
+    friendships,
+    friendChats,
     referenceCollections,
     settings,
   ] = await Promise.all([
@@ -374,6 +399,8 @@ export async function loadSupabaseNormalizedData() {
     loadRows(pool, "nutripath_personal_foods", "updated_at DESC, name"),
     loadRows(pool, "nutripath_coach_plans", "created_at DESC NULLS LAST, id"),
     loadRows(pool, "nutripath_ai_safety_logs", "created_at DESC NULLS LAST, id"),
+    loadRows(pool, "nutripath_friendships", "id"),
+    loadRows(pool, "nutripath_friend_chats", "created_at ASC, id"),
     loadReferenceCollections(pool),
     loadSettings(pool),
   ]);
@@ -398,6 +425,8 @@ export async function loadSupabaseNormalizedData() {
     personalFoods,
     coachPlans,
     notifications,
+    friendships,
+    friendChats,
     chat: settings.chat || clone(seedData.chat),
     admin: settings.admin || clone(seedData.admin),
   });
@@ -405,6 +434,8 @@ export async function loadSupabaseNormalizedData() {
 
 async function deleteNormalizedRows(client) {
   const tables = [
+    "nutripath_friend_chats",
+    "nutripath_friendships",
     "nutripath_ai_safety_logs",
     "nutripath_coach_plans",
     "nutripath_personal_foods",
@@ -606,6 +637,37 @@ export async function persistSupabaseNormalizedData(data) {
       return { id, created_at: timestampOrNull(log.createdAt || log.time), data: withColumnValues(log, { id }) };
     }), (log) => log.id);
     await bulkInsert(client, "nutripath_ai_safety_logs", ["id", "created_at", "data"], "id text, created_at timestamptz, data jsonb", aiSafetyLogs);
+
+    const friendships = uniqueBy((state.friendships || []).map((f, index) => {
+      const id = requiredText(f.id, `friend-${index + 1}`);
+      const requester_id = optionalText(f.requesterId);
+      const addressee_id = optionalText(f.addresseeId);
+      if (!requester_id || !addressee_id) return null;
+      return {
+        id,
+        requester_id,
+        addressee_id,
+        status: optionalText(f.status) || "pending",
+        data: withColumnValues(f, { id, requesterId: requester_id, addresseeId: addressee_id }),
+      };
+    }).filter(Boolean), (f) => f.id);
+    await bulkInsert(client, "nutripath_friendships", ["id", "requester_id", "addressee_id", "status", "data"], "id text, requester_id text, addressee_id text, status text, data jsonb", friendships);
+
+    const friendChats = uniqueBy((state.friendChats || []).map((c, index) => {
+      const id = requiredText(c.id, `fchat-${index + 1}`);
+      const sender_id = optionalText(c.senderId);
+      const receiver_id = optionalText(c.receiverId);
+      if (!sender_id || !receiver_id) return null;
+      return {
+        id,
+        sender_id,
+        receiver_id,
+        message_text: requiredText(c.text, ""),
+        created_at: timestampOrNull(c.createdAt || c.time),
+        data: withColumnValues(c, { id, senderId: sender_id, receiverId: receiver_id, text: c.text }),
+      };
+    }).filter(Boolean), (c) => c.id);
+    await bulkInsert(client, "nutripath_friend_chats", ["id", "sender_id", "receiver_id", "message_text", "created_at", "data"], "id text, sender_id text, receiver_id text, message_text text, created_at timestamptz, data jsonb", friendChats);
 
     await insertReferenceItems(client, "activityLevels", state.activityLevels);
     await insertReferenceItems(client, "exerciseTypes", state.exerciseTypes);
