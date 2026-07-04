@@ -45,19 +45,28 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       if (!session.initialized) return null;
       final path = state.uri.path;
-      final isAuthPage = path == AppRoutes.login || path == AppRoutes.register || path == AppRoutes.verifyOtp;
+      final isAuthPage =
+          path == AppRoutes.login ||
+          path == AppRoutes.register ||
+          path == AppRoutes.verifyOtp;
       if (isAuthPage && session.isLoggedIn) return AppRoutes.dashboard;
       if (protectedPaths.contains(path) && !session.isLoggedIn) {
         final from = Uri.encodeComponent(state.uri.toString());
         return '${AppRoutes.login}?from=$from';
       }
-      if (path == AppRoutes.admin && (!session.isLoggedIn || !session.isAdmin)) {
-        return session.isLoggedIn ? AppRoutes.dashboard : '${AppRoutes.login}?from=%2Fadmin';
+      if (path == AppRoutes.admin &&
+          (!session.isLoggedIn || !session.isAdmin)) {
+        return session.isLoggedIn
+            ? AppRoutes.dashboard
+            : '${AppRoutes.login}?from=%2Fadmin';
       }
       return null;
     },
     routes: [
-      GoRoute(path: AppRoutes.root, redirect: (context, state) => AppRoutes.dashboard),
+      GoRoute(
+        path: AppRoutes.root,
+        redirect: (context, state) => AppRoutes.dashboard,
+      ),
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) =>
@@ -123,15 +132,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '${AppRoutes.userProfile}/:id',
-            builder: (context, state) => UserProfileScreen(
-              userId: state.pathParameters['id']!,
-            ),
+            builder: (context, state) =>
+                UserProfileScreen(userId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '${AppRoutes.friendChat}/:id',
-            builder: (context, state) => FriendChatScreen(
-              friendId: state.pathParameters['id']!,
-            ),
+            builder: (context, state) =>
+                FriendChatScreen(friendId: state.pathParameters['id']!),
           ),
         ],
       ),
@@ -167,7 +174,13 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);
     final selectedIndex = _selectedIndex(location);
-    final canOpenChat = location != AppRoutes.login && location != AppRoutes.register;
+    final isFriendChat =
+        location == AppRoutes.friendChat ||
+        location.startsWith('${AppRoutes.friendChat}/');
+    final canOpenChat =
+        location != AppRoutes.login &&
+        location != AppRoutes.register &&
+        !isFriendChat;
     return Scaffold(
       appBar: AppBar(
         title: Row(

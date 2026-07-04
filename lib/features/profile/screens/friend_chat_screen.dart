@@ -35,11 +35,8 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Load initial chat history
     _loadInitialHistory();
-    // Start SSE stream listener for instant real-time updates
     _startSseListener();
-    // Setup fallback periodic polling every 10 seconds in case stream drops
     _fallbackTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _pollChatHistorySilent();
     });
@@ -56,7 +53,9 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
 
   Future<void> _loadInitialHistory() async {
     try {
-      final list = await ref.read(apiClientProvider).getFriendChatHistory(widget.friendId);
+      final list = await ref
+          .read(apiClientProvider)
+          .getFriendChatHistory(widget.friendId);
       if (mounted) {
         setState(() {
           _messages = list;
@@ -77,7 +76,9 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
 
   Future<void> _pollChatHistorySilent() async {
     try {
-      final list = await ref.read(apiClientProvider).getFriendChatHistory(widget.friendId);
+      final list = await ref
+          .read(apiClientProvider)
+          .getFriendChatHistory(widget.friendId);
       if (mounted) {
         setState(() {
           for (final msg in list) {
@@ -88,7 +89,9 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
           _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           if (_messages.length > _lastMsgCount) {
             _lastMsgCount = _messages.length;
-            WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _scrollToBottom(),
+            );
           }
         });
       }
@@ -101,7 +104,9 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       final token = ref.read(sessionControllerProvider).session?.token ?? '';
       final request = http.Request(
         'GET',
-        Uri.parse('${AppConfig.apiBaseUrl}/api/friends/chats/${widget.friendId}/stream'),
+        Uri.parse(
+          '${AppConfig.apiBaseUrl}/api/friends/chats/${widget.friendId}/stream',
+        ),
       );
       if (token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
@@ -110,40 +115,46 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       request.headers['Cache-Control'] = 'no-cache';
 
       final response = await _sseClient!.send(request);
-      
+
       response.stream
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen(
-        (line) {
-          if (line.startsWith('data: ')) {
-            final dataStr = line.substring(6).trim();
-            if (dataStr == 'connected') return;
-            try {
-              final newMsg = FriendChatMessage.fromJson(jsonDecode(dataStr));
-              if (mounted) {
-                setState(() {
-                  if (!_messages.any((m) => m.id == newMsg.id)) {
-                    _messages.add(newMsg);
-                    _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+            (line) {
+              if (line.startsWith('data: ')) {
+                final dataStr = line.substring(6).trim();
+                if (dataStr == 'connected') return;
+                try {
+                  final newMsg = FriendChatMessage.fromJson(
+                    jsonDecode(dataStr),
+                  );
+                  if (mounted) {
+                    setState(() {
+                      if (!_messages.any((m) => m.id == newMsg.id)) {
+                        _messages.add(newMsg);
+                        _messages.sort(
+                          (a, b) => a.createdAt.compareTo(b.createdAt),
+                        );
+                      }
+                      if (_messages.length > _lastMsgCount) {
+                        _lastMsgCount = _messages.length;
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _scrollToBottom(),
+                        );
+                      }
+                    });
                   }
-                  if (_messages.length > _lastMsgCount) {
-                    _lastMsgCount = _messages.length;
-                    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                  }
-                });
+                } catch (_) {}
               }
-            } catch (_) {}
-          }
-        },
-        onError: (e) {
-          _reconnectSse();
-        },
-        onDone: () {
-          _reconnectSse();
-        },
-        cancelOnError: true,
-      );
+            },
+            onError: (e) {
+              _reconnectSse();
+            },
+            onDone: () {
+              _reconnectSse();
+            },
+            cancelOnError: true,
+          );
     } catch (_) {
       _reconnectSse();
     }
@@ -205,7 +216,10 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
             Expanded(
               child: Text(
                 friendName,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -223,9 +237,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       ),
       body: Column(
         children: [
-          Expanded(
-            child: _buildChatBody(myId),
-          ),
+          Expanded(child: _buildChatBody(myId)),
           _buildInputBar(),
         ],
       ),
@@ -300,7 +312,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
 
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         border: Border(
@@ -310,28 +322,72 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       child: SafeArea(
         top: false,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: TextField(
-                controller: _messageController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'Nhập tin nhắn...',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: TextField(
+                  controller: _messageController,
+                  minLines: 1,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.send,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: 'Nhập tin nhắn...',
+                    isDense: true,
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.4,
+                      ),
+                    ),
+                  ),
+                  onSubmitted: (_) => _sendMessage(),
                 ),
-                onSubmitted: (_) => _sendMessage(),
               ),
             ),
-            IconButton(
-              icon: _sending
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send, color: AppColors.primary),
-              onPressed: _sending ? null : _sendMessage,
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton.filled(
+                tooltip: 'Gửi',
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.primary.withValues(
+                    alpha: 0.45,
+                  ),
+                  disabledForegroundColor: Colors.white70,
+                ),
+                icon: _sending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.send_rounded),
+                onPressed: _sending ? null : _sendMessage,
+              ),
             ),
           ],
         ),
@@ -348,9 +404,10 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
     });
 
     try {
-      await ref.read(apiClientProvider).sendFriendChatMessage(widget.friendId, text);
+      await ref
+          .read(apiClientProvider)
+          .sendFriendChatMessage(widget.friendId, text);
       _messageController.clear();
-      // Instantly query new messages locally
       _pollChatHistorySilent();
     } catch (e) {
       if (mounted) showSnack(context, readableError(e));
