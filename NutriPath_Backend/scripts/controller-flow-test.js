@@ -10,10 +10,14 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const address = server.address();
 const baseUrl = `http://127.0.0.1:${address.port}`;
 const originalConsoleLog = console.log;
+const originalEmailProvider = process.env.EMAIL_PROVIDER;
+const originalBrevoApiKey = process.env.BREVO_API_KEY;
 const originalSmtpUser = process.env.SMTP_USER;
 const originalSmtpPass = process.env.SMTP_PASS;
 let latestOtpCode = "";
 
+process.env.EMAIL_PROVIDER = "";
+process.env.BREVO_API_KEY = "";
 process.env.SMTP_USER = "";
 process.env.SMTP_PASS = "";
 console.log = (...args) => {
@@ -186,6 +190,8 @@ try {
   console.log(`Controller flow test passed against ${baseUrl}`);
 } finally {
   console.log = originalConsoleLog;
+  process.env.EMAIL_PROVIDER = originalEmailProvider;
+  process.env.BREVO_API_KEY = originalBrevoApiKey;
   process.env.SMTP_USER = originalSmtpUser;
   process.env.SMTP_PASS = originalSmtpPass;
   await new Promise((resolve) => server.close(resolve));

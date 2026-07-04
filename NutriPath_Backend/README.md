@@ -57,6 +57,20 @@ Trên Render/Railway, đặt các biến môi trường tương tự trong dashb
 
 Muốn tạm chạy adapter cũ một dòng JSONB thì đặt `NUTRIPATH_SUPABASE_STORAGE=app_state` và dùng file `sql/nutripath_supabase_app_state.sql`. Không dùng mode này cho dữ liệu production dài hạn.
 
+## OTP email on Render Free
+
+Render Free blocks outbound SMTP ports such as `25`, `465`, and `587`, so Gmail SMTP and Brevo SMTP can time out in production. Use Brevo's HTTPS API instead:
+
+```powershell
+$env:EMAIL_PROVIDER="brevo"
+$env:BREVO_API_KEY="xkeysib-..."
+$env:BREVO_FROM_EMAIL="nam27200310@gmail.com"
+$env:BREVO_FROM_NAME="NutriPath"
+node src/server.js
+```
+
+`BREVO_FROM_EMAIL` must be a verified Brevo sender. Keep `SMTP_*` variables only for local development or paid hosts that allow SMTP.
+
 ## HATEOAS
 
 Ví dụ `GET /api` trả về các link entrypoint:
