@@ -59,7 +59,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         ref.invalidate(friendsListProvider);
       },
       child: asyncFriends.when(
-        loading: () => const LoadingPanel(),
+        loading: () => _buildScrollableContainer(const LoadingPanel()),
         error: (err, stack) => NutriPage(
           children: [
             ErrorPanel(
@@ -70,10 +70,12 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         ),
         data: (friends) {
           if (friends.isEmpty) {
-            return const EmptyState(
-              title: 'Chưa có bạn bè',
-              message: 'Hãy sang tab Tìm kiếm để kết nối với người dùng khác!',
-              icon: Icons.people_outline,
+            return _buildScrollableContainer(
+              const EmptyState(
+                title: 'Chưa có bạn bè',
+                message: 'Hãy sang tab Tìm kiếm để kết nối với người dùng khác!',
+                icon: Icons.people_outline,
+              ),
             );
           }
           return ListView.separated(
@@ -129,7 +131,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         ref.invalidate(friendRequestsProvider);
       },
       child: asyncRequests.when(
-        loading: () => const LoadingPanel(),
+        loading: () => _buildScrollableContainer(const LoadingPanel()),
         error: (err, stack) => NutriPage(
           children: [
             ErrorPanel(
@@ -143,10 +145,12 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           final outgoing = requests.outgoing;
 
           if (incoming.isEmpty && outgoing.isEmpty) {
-            return const EmptyState(
-              title: 'Không có lời mời nào',
-              message: 'Hộp thư yêu cầu kết bạn của bạn hiện đang trống.',
-              icon: Icons.mail_outline,
+            return _buildScrollableContainer(
+              const EmptyState(
+                title: 'Không có lời mời nào',
+                message: 'Hộp thư yêu cầu kết bạn của bạn hiện đang trống.',
+                icon: Icons.mail_outline,
+              ),
             );
           }
 
@@ -417,5 +421,17 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     } catch (e) {
       if (mounted) showSnack(context, readableError(e));
     }
+  }
+
+  Widget _buildScrollableContainer(Widget child) {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: child,
+        ),
+      ],
+    );
   }
 }
