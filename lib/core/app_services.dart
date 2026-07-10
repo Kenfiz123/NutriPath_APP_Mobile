@@ -864,18 +864,22 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 final dashboardDataProvider = FutureProvider.family<DashboardData, String>((ref, date) async {
+  ref.watch(sessionControllerProvider);
   return ref.read(apiClientProvider).getDashboard(date: date);
 });
 
 final recipesProvider = FutureProvider<RecipeCollection>((ref) async {
+  ref.watch(sessionControllerProvider);
   return ref.read(apiClientProvider).getRecipes();
 });
 
 final nutritionReportProvider = FutureProvider<NutritionReport>((ref) async {
+  ref.watch(sessionControllerProvider);
   return ref.read(apiClientProvider).getNutritionReport();
 });
 
 final mealLogProvider = FutureProvider.family<MealLog, String>((ref, date) async {
+  ref.watch(sessionControllerProvider);
   return ref.read(apiClientProvider).getMealLog(date);
 });
 
@@ -884,10 +888,12 @@ final fullRecipesProvider = FutureProvider.family<RecipeCollection, ({String sea
 });
 
 final personalizedRecipesProvider = FutureProvider<List<Recipe>>((ref) async {
+  ref.watch(sessionControllerProvider);
   return ref.read(apiClientProvider).getPersonalizedRecipes();
 });
 
 final fullReportsProvider = FutureProvider.family<NutritionReport, int>((ref, days) async {
+  ref.watch(sessionControllerProvider);
   return ref.read(apiClientProvider).getNutritionReport(days: days);
 });
 
@@ -904,6 +910,7 @@ class ProfileBundle {
 }
 
 final profileBundleProvider = FutureProvider<ProfileBundle>((ref) async {
+  ref.watch(sessionControllerProvider);
   final api = ref.read(apiClientProvider);
   final results = await Future.wait<Object>([
     api.getProfile(),
@@ -918,10 +925,12 @@ final profileBundleProvider = FutureProvider<ProfileBundle>((ref) async {
 });
 
 final friendsListProvider = FutureProvider<List<Friend>>((ref) async {
+  ref.watch(sessionControllerProvider);
   return ref.read(apiClientProvider).getFriends();
 });
 
 final friendRequestsProvider = FutureProvider<({List<FriendRequest> incoming, List<FriendRequest> outgoing})>((ref) async {
+  ref.watch(sessionControllerProvider);
   return ref.read(apiClientProvider).getFriendRequests();
 });
 

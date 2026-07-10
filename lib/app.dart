@@ -50,7 +50,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           path == AppRoutes.register ||
           path == AppRoutes.verifyOtp;
       if (isAuthPage && session.isLoggedIn) return AppRoutes.dashboard;
-      if (protectedPaths.contains(path) && !session.isLoggedIn) {
+      final isProtected = protectedPaths.contains(path) ||
+          path.startsWith('${AppRoutes.userProfile}/') ||
+          path.startsWith('${AppRoutes.friendChat}/');
+      if (isProtected && !session.isLoggedIn) {
         final from = Uri.encodeComponent(state.uri.toString());
         return '${AppRoutes.login}?from=$from';
       }
@@ -81,6 +84,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => OtpVerificationScreen(
           email: state.uri.queryParameters['email'] ?? '',
         ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.friendChat}/:id',
+        builder: (context, state) =>
+            FriendChatScreen(friendId: state.pathParameters['id']!),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -134,11 +142,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '${AppRoutes.userProfile}/:id',
             builder: (context, state) =>
                 UserProfileScreen(userId: state.pathParameters['id']!),
-          ),
-          GoRoute(
-            path: '${AppRoutes.friendChat}/:id',
-            builder: (context, state) =>
-                FriendChatScreen(friendId: state.pathParameters['id']!),
           ),
         ],
       ),
