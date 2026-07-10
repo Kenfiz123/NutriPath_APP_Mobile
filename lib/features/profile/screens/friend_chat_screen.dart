@@ -371,9 +371,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.primary.withValues(
-                    alpha: 0.45,
-                  ),
+                  disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.45),
                   disabledForegroundColor: Colors.white70,
                 ),
                 icon: _sending

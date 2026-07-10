@@ -51,9 +51,7 @@ class _FullProfileScreenState extends ConsumerState<FullProfileScreen> {
                   children: [
                     CircleAvatar(
                       radius: 42,
-                      backgroundColor: AppColors.primary.withValues(
-                        alpha: 0.12,
-                      ),
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                       child: Text(
                         member.initials,
                         style: const TextStyle(

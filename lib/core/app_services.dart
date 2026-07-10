@@ -931,7 +931,20 @@ final friendsListProvider = FutureProvider<List<Friend>>((ref) async {
 
 final friendRequestsProvider = FutureProvider<({List<FriendRequest> incoming, List<FriendRequest> outgoing})>((ref) async {
   ref.watch(sessionControllerProvider);
-  return ref.read(apiClientProvider).getFriendRequests();
+  try {
+    final result = await ref.read(apiClientProvider).getFriendRequests();
+    debugPrint('DEBUG: friendRequestsProvider returning incoming=${result.incoming.length}, outgoing=${result.outgoing.length}');
+    for (final req in result.incoming) {
+      debugPrint('DEBUG: Incoming req: id=${req.id}, friendId=${req.friendId}, email=${req.email}');
+    }
+    for (final req in result.outgoing) {
+      debugPrint('DEBUG: Outgoing req: id=${req.id}, friendId=${req.friendId}, email=${req.email}');
+    }
+    return result;
+  } catch (e, stack) {
+    debugPrint('DEBUG: friendRequestsProvider error: $e\n$stack');
+    rethrow;
+  }
 });
 
 final userSearchProvider = FutureProvider.family<List<Friend>, String>((ref, query) async {

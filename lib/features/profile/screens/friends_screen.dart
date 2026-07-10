@@ -424,11 +424,12 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   }
 
   Widget _buildScrollableContainer(Widget child) {
-    return CustomScrollView(
+    return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverFillRemaining(
-          hasScrollBody: false,
+      children: [
+        Container(
+          constraints: const BoxConstraints(minHeight: 400),
+          alignment: Alignment.center,
           child: child,
         ),
       ],
