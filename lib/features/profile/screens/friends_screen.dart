@@ -214,6 +214,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               ),
               const SizedBox(width: 8),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
                 onPressed: () => _respondRequest(req.friendId, true),
                 child: const Text('Chấp nhận'),
               ),
