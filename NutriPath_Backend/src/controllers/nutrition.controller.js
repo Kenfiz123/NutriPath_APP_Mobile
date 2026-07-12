@@ -232,7 +232,7 @@ export function registerNutritionRoutes(ctx) {
       badRequest("Thông tin dinh dưỡng không hợp lệ.");
     }
     store.db.foods.push(food);
-    await store.save();
+    await store.saveFood(food);
     return foodResource(req, food);
   });
 
@@ -286,7 +286,7 @@ export function registerNutritionRoutes(ctx) {
     const food = getFood(store.db, params.id);
     if (!food) notFound(req, "Food not found.");
     Object.assign(food, body, { id: food.id });
-    await store.save();
+    await store.saveFood(food);
     return foodResource(req, food);
   });
 
@@ -295,7 +295,7 @@ export function registerNutritionRoutes(ctx) {
     const before = store.db.foods.length;
     store.db.foods = store.db.foods.filter((food) => food.id !== params.id);
     if (store.db.foods.length === before) notFound(req, "Food not found.");
-    await store.save();
+    await store.deleteFood(params.id);
     return { deleted: params.id, _links: { collection: link(req, "/api/foods") } };
   });
 
@@ -421,7 +421,7 @@ export function registerNutritionRoutes(ctx) {
     }
 
     ensurePersonalFoods(store.db).unshift(savedFood);
-    await store.save();
+    await store.savePersonalFood(savedFood);
     return customFoodResource(req, savedFood);
   });
 
@@ -432,7 +432,7 @@ export function registerNutritionRoutes(ctx) {
     if (foodIndex === -1) notFound(req, "Món cá nhân không tồn tại.");
 
     const [deletedFood] = foods.splice(foodIndex, 1);
-    await store.save();
+    await store.deletePersonalFood(deletedFood.id);
     return {
       deleted: deletedFood.id,
       _links: {

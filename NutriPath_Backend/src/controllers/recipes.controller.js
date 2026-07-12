@@ -256,7 +256,7 @@ export function registerRecipesRoutes(ctx) {
       nutrition: body.nutrition || { protein: 0, carbs: 0, fat: 0, fiber: 0 },
     };
     store.db.recipes.push(recipe);
-    await store.save();
+    await store.saveRecipe(recipe);
     return recipeResource(req, recipe);
   });
 
@@ -292,7 +292,8 @@ export function registerRecipesRoutes(ctx) {
 
     const generatedRecipe = await generatePersonalizedRecipe(store, member, prompt, answers);
     const recipe = savePersonalizedRecipe(store, member, generatedRecipe);
-    await store.save();
+    await store.savePersonalizedRecipe(recipe);
+    await store.saveMember(member);
     return {
       status: "recipe",
       recipe: personalizedRecipeResource(req, recipe),
@@ -321,7 +322,8 @@ export function registerRecipesRoutes(ctx) {
       actionHref: "/dashboard",
       priority: "high",
     });
-    await store.save();
+    await store.saveCoachPlan(plan);
+    await store.saveNotificationsForMember(member.id);
     return {
       plan,
       _links: {
@@ -354,7 +356,7 @@ export function registerRecipesRoutes(ctx) {
     const recipe = getRecipe(store.db, params.id);
     if (!recipe) notFound(req, "Recipe not found.");
     Object.assign(recipe, body, { id: recipe.id });
-    await store.save();
+    await store.saveRecipe(recipe);
     return recipeResource(req, recipe);
   });
 
@@ -362,7 +364,7 @@ export function registerRecipesRoutes(ctx) {
     const before = store.db.recipes.length;
     store.db.recipes = store.db.recipes.filter((recipe) => recipe.id !== params.id);
     if (store.db.recipes.length === before) notFound(req, "Recipe not found.");
-    await store.save();
+    await store.deleteRecipe(params.id);
     return { deleted: params.id, _links: { collection: link(req, "/api/recipes") } };
   });
 }

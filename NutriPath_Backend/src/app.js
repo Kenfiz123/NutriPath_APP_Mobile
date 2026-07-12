@@ -2667,6 +2667,11 @@ async function updateMemberDailyCalorieGoal(store, member, dailyCalorieGoal) {
   member.calorieTarget = dailyCalorieGoal;
   if (store.dataSource === "sqlserver") {
     await updateSqlServerMemberCalorieGoal(member.id, dailyCalorieGoal);
+    return;
+  }
+  if (typeof store.saveMember === "function") {
+    await store.saveMember(member);
+    return;
   }
   await store.save();
 }
@@ -2678,6 +2683,9 @@ async function saveMealLogChanges(store, log) {
   }
   if (typeof store.saveMealLog === "function") {
     await store.saveMealLog(log);
+    if (typeof store.saveNotificationsForMember === "function") {
+      await store.saveNotificationsForMember(log.memberId);
+    }
     return;
   }
   await store.save();
@@ -2687,6 +2695,11 @@ async function saveMemberNutritionProfile(store, member, calculation) {
   const updatedMember = applyNutritionCalculationToMember(member, calculation);
   if (store.dataSource === "sqlserver") {
     await saveSqlServerMemberNutritionProfile(updatedMember, updatedMember.nutritionProfile);
+    return updatedMember;
+  }
+  if (typeof store.saveMember === "function") {
+    await store.saveMember(updatedMember);
+    return updatedMember;
   }
   await store.save();
   return updatedMember;

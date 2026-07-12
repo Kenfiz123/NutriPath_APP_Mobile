@@ -462,6 +462,314 @@ export async function persistSupabaseMealLog(log) {
   );
 }
 
+export async function persistSupabaseMember(member) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(member?.id, `mem-${Date.now().toString(36)}`);
+  const email = requiredText(member?.email, `${id}@nutripath.local`);
+  const name = requiredText(member?.name, "NutriPath Member");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_members")} (id, email, name, tier, role, data, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, tier = EXCLUDED.tier, role = EXCLUDED.role, data = EXCLUDED.data, updated_at = now();`,
+    [id, email, name, optionalText(member?.tier), optionalText(member?.role), asJson(withColumnValues(member, { id, email, name }))],
+  );
+}
+
+export async function deleteSupabaseMember(memberId) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  await pool.query(`DELETE FROM ${table("nutripath_members")} WHERE id = $1;`, [memberId]);
+}
+
+export async function persistSupabaseFood(food) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(food?.id, `food-${Date.now().toString(36)}`);
+  const name = requiredText(food?.name, "Món ăn");
+  const category = requiredText(food?.category, "Khác");
+  const calories = numericOrZero(food?.calories);
+  await pool.query(
+    `INSERT INTO ${table("nutripath_foods")} (id, name, category, calories, data, updated_at)
+     VALUES ($1, $2, $3, $4, $5::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category, calories = EXCLUDED.calories, data = EXCLUDED.data, updated_at = now();`,
+    [id, name, category, calories, asJson(withColumnValues(food, { id, name, category, calories }))],
+  );
+}
+
+export async function deleteSupabaseFood(foodId) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  await pool.query(`DELETE FROM ${table("nutripath_foods")} WHERE id = $1;`, [foodId]);
+}
+
+export async function persistSupabaseRecipe(recipe) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(recipe?.id, `recipe-${Date.now().toString(36)}`);
+  const name = requiredText(recipe?.name, "Công thức healthy");
+  const calories = Math.round(numericOrZero(recipe?.calories));
+  await pool.query(
+    `INSERT INTO ${table("nutripath_recipes")} (id, name, calories, data, updated_at)
+     VALUES ($1, $2, $3, $4::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET name = EXCLUDED.name, calories = EXCLUDED.calories, data = EXCLUDED.data, updated_at = now();`,
+    [id, name, calories, asJson(withColumnValues(recipe, { id, name, calories }))],
+  );
+}
+
+export async function deleteSupabaseRecipe(recipeId) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  await pool.query(`DELETE FROM ${table("nutripath_recipes")} WHERE id = $1;`, [recipeId]);
+}
+
+export async function persistSupabasePersonalizedRecipe(recipe) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(recipe?.id, `personalized-recipe-${Date.now().toString(36)}`);
+  const member_id = optionalText(recipe?.memberId);
+  if (!member_id) throw new Error("Personalized recipe must include memberId.");
+  const name = requiredText(recipe?.name, "Công thức cá nhân hóa");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_personalized_recipes")} (id, member_id, name, generated_at, saved_at, data, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET member_id = EXCLUDED.member_id, name = EXCLUDED.name, generated_at = EXCLUDED.generated_at, saved_at = EXCLUDED.saved_at, data = EXCLUDED.data, updated_at = now();`,
+    [id, member_id, name, timestampOrNull(recipe?.generatedAt), timestampOrNull(recipe?.savedAt), asJson(withColumnValues(recipe, { id, memberId: member_id, name }))],
+  );
+}
+
+export async function persistSupabasePayment(payment) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(payment?.id, `payment-${Date.now().toString(36)}`);
+  const member_id = optionalText(payment?.memberId);
+  if (!member_id) throw new Error("Payment must include memberId.");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_payments")} (id, member_id, invoice, status, paid_at, data, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET member_id = EXCLUDED.member_id, invoice = EXCLUDED.invoice, status = EXCLUDED.status, paid_at = EXCLUDED.paid_at, data = EXCLUDED.data, updated_at = now();`,
+    [id, member_id, optionalText(payment?.invoice), optionalText(payment?.status), timestampOrNull(payment?.paidAt), asJson(withColumnValues(payment, { id, memberId: member_id }))],
+  );
+}
+
+export async function persistSupabaseAuthCredential(credential) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(credential?.id, `cred-${Date.now().toString(36)}`);
+  const member_id = optionalText(credential?.memberId);
+  const email = optionalText(credential?.email);
+  if (!member_id || !email) throw new Error("Auth credential must include memberId and email.");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_auth_credentials")} (id, member_id, email, data, updated_at)
+     VALUES ($1, $2, $3, $4::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET member_id = EXCLUDED.member_id, email = EXCLUDED.email, data = EXCLUDED.data, updated_at = now();`,
+    [id, member_id, email, asJson(withColumnValues(credential, { id, memberId: member_id, email }))],
+  );
+}
+
+export async function persistSupabaseOAuthIdentity(identity) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(identity?.id, `oauth-${Date.now().toString(36)}`);
+  const member_id = optionalText(identity?.memberId);
+  if (!member_id) throw new Error("OAuth identity must include memberId.");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_oauth_identities")} (id, member_id, provider, provider_user_id, email, data, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET member_id = EXCLUDED.member_id, provider = EXCLUDED.provider, provider_user_id = EXCLUDED.provider_user_id, email = EXCLUDED.email, data = EXCLUDED.data, updated_at = now();`,
+    [id, member_id, optionalText(identity?.provider || identity?.providerName), optionalText(identity?.providerUserId), optionalText(identity?.email), asJson(withColumnValues(identity, { id, memberId: member_id }))],
+  );
+}
+
+export async function persistSupabasePersonalFood(food) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(food?.id, `personal-food-${Date.now().toString(36)}`);
+  const member_id = optionalText(food?.memberId);
+  if (!member_id) throw new Error("Personal food must include memberId.");
+  const name = requiredText(food?.name, "Món cá nhân");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_personal_foods")} (id, member_id, name, data, updated_at)
+     VALUES ($1, $2, $3, $4::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET member_id = EXCLUDED.member_id, name = EXCLUDED.name, data = EXCLUDED.data, updated_at = now();`,
+    [id, member_id, name, asJson(withColumnValues(food, { id, memberId: member_id, name }))],
+  );
+}
+
+export async function deleteSupabasePersonalFood(foodId) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  await pool.query(`DELETE FROM ${table("nutripath_personal_foods")} WHERE id = $1;`, [foodId]);
+}
+
+export async function persistSupabaseCoachPlan(plan) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(plan?.id, `coach-plan-${Date.now().toString(36)}`);
+  const member_id = optionalText(plan?.memberId);
+  if (!member_id) throw new Error("Coach plan must include memberId.");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_coach_plans")} (id, member_id, created_at, data, updated_at)
+     VALUES ($1, $2, $3, $4::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET member_id = EXCLUDED.member_id, created_at = EXCLUDED.created_at, data = EXCLUDED.data, updated_at = now();`,
+    [id, member_id, timestampOrNull(plan?.createdAt || plan?.generatedAt), asJson(withColumnValues(plan, { id, memberId: member_id }))],
+  );
+}
+
+export async function persistSupabaseFriendship(friendship) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(friendship?.id, `friend-${Date.now().toString(36)}`);
+  const requester_id = optionalText(friendship?.requesterId);
+  const addressee_id = optionalText(friendship?.addresseeId);
+  if (!requester_id || !addressee_id) throw new Error("Friendship must include requesterId and addresseeId.");
+  const status = optionalText(friendship?.status) || "pending";
+  await pool.query(
+    `INSERT INTO ${table("nutripath_friendships")} (id, requester_id, addressee_id, status, data, updated_at)
+     VALUES ($1, $2, $3, $4, $5::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET requester_id = EXCLUDED.requester_id, addressee_id = EXCLUDED.addressee_id, status = EXCLUDED.status, data = EXCLUDED.data, updated_at = now();`,
+    [id, requester_id, addressee_id, status, asJson(withColumnValues(friendship, { id, requesterId: requester_id, addresseeId: addressee_id }))],
+  );
+}
+
+export async function deleteSupabaseFriendship(friendshipId) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  await pool.query(`DELETE FROM ${table("nutripath_friendships")} WHERE id = $1;`, [friendshipId]);
+}
+
+export async function persistSupabaseFriendChat(message) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(message?.id, `fchat-${Date.now().toString(36)}`);
+  const sender_id = optionalText(message?.senderId);
+  const receiver_id = optionalText(message?.receiverId);
+  if (!sender_id || !receiver_id) throw new Error("Friend chat message must include senderId and receiverId.");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_friend_chats")} (id, sender_id, receiver_id, message_text, data, created_at)
+     VALUES ($1, $2, $3, $4, $5::jsonb, COALESCE($6::timestamptz, now()))
+     ON CONFLICT (id)
+     DO UPDATE SET sender_id = EXCLUDED.sender_id, receiver_id = EXCLUDED.receiver_id, message_text = EXCLUDED.message_text, data = EXCLUDED.data;`,
+    [id, sender_id, receiver_id, requiredText(message?.text, ""), asJson(withColumnValues(message, { id, senderId: sender_id, receiverId: receiver_id, text: message?.text })), timestampOrNull(message?.createdAt || message?.time)],
+  );
+}
+
+export async function replaceSupabaseMemberChatHistory(memberId, messages = []) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  const records = uniqueBy(messages.map((message, index) => {
+    const id = requiredText(message.id, `chat-${index + 1}`);
+    const member_id = optionalText(message.memberId || memberId);
+    if (!member_id) return null;
+    return {
+      id,
+      member_id,
+      sender: optionalText(message.sender),
+      message_time: timestampOrNull(message.time),
+      data: withColumnValues(message, { id, memberId: member_id }),
+    };
+  }).filter(Boolean), (message) => message.id);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`DELETE FROM ${table("nutripath_chat_messages")} WHERE member_id = $1;`, [memberId]);
+    await bulkInsert(client, "nutripath_chat_messages", ["id", "member_id", "sender", "message_time", "data"], "id text, member_id text, sender text, message_time timestamptz, data jsonb", records);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function replaceSupabaseMemberNotifications(memberId, notifications = []) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  const records = uniqueBy(notifications.map((notification, index) => {
+    const id = requiredText(notification.id, `notification-${index + 1}`);
+    const member_id = optionalText(notification.memberId || memberId);
+    if (!member_id) return null;
+    return {
+      id,
+      member_id,
+      notification_key: optionalText(notification.key),
+      read_at: timestampOrNull(notification.readAt),
+      created_at: timestampOrNull(notification.createdAt),
+      data: withColumnValues(notification, { id, memberId: member_id }),
+    };
+  }).filter(Boolean), (notification) => notification.id);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`DELETE FROM ${table("nutripath_notifications")} WHERE member_id = $1;`, [memberId]);
+    await bulkInsert(client, "nutripath_notifications", ["id", "member_id", "notification_key", "read_at", "created_at", "data"], "id text, member_id text, notification_key text, read_at timestamptz, created_at timestamptz, data jsonb", records);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function replaceSupabaseAiSafetyLogs(logs = []) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  const records = uniqueBy((logs || []).map((log, index) => {
+    const id = requiredText(log.id, `aisafe-${index + 1}`);
+    return { id, created_at: timestampOrNull(log.createdAt || log.time), data: withColumnValues(log, { id }) };
+  }), (log) => log.id);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`DELETE FROM ${table("nutripath_ai_safety_logs")};`);
+    await bulkInsert(client, "nutripath_ai_safety_logs", ["id", "created_at", "data"], "id text, created_at timestamptz, data jsonb", records);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function persistSupabaseSetting(settingKey, data) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+  await pool.query(
+    `INSERT INTO ${table("nutripath_settings")} (setting_key, data, updated_at)
+     VALUES ($1, $2::jsonb, now())
+     ON CONFLICT (setting_key)
+     DO UPDATE SET data = EXCLUDED.data, updated_at = now();`,
+    [settingKey, asJson(data)],
+  );
+}
+
 async function deleteNormalizedRows(client) {
   const tables = [
     "nutripath_friend_chats",

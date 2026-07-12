@@ -355,7 +355,7 @@ export function registerAdminRoutes(ctx) {
   route("PATCH", "/api/admin/settings/ai", async ({ req, store, body }) => {
     requireAdminSession(req, store);
     store.db.admin.aiSettings = { ...store.db.admin.aiSettings, ...body };
-    await store.save();
+    await store.saveSetting("admin", store.db.admin);
     return {
       settings: store.db.admin.aiSettings,
       _links: {
@@ -393,7 +393,7 @@ export function registerAdminRoutes(ctx) {
   route("PATCH", "/api/admin/security", async ({ req, store, body }) => {
     requireAdminSession(req, store);
     store.db.admin.security = { ...store.db.admin.security, ...body };
-    await store.save();
+    await store.saveSetting("admin", store.db.admin);
     return {
       security: store.db.admin.security,
       _links: {

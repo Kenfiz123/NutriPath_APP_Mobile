@@ -225,7 +225,8 @@ export function registerAuthRoutes(ctx) {
         existingCredential.passwordHash = hashed.passwordHash;
         existingCredential.passwordSalt = hashed.passwordSalt;
 
-        await store.save();
+        await store.saveMember(existingMember);
+        await store.saveAuthCredential(existingCredential);
 
         queueOtpEmail(email, otpCode);
 
@@ -273,7 +274,8 @@ export function registerAuthRoutes(ctx) {
     } else {
       if (isNewMember) store.db.members.push(member);
       credentials.push(credential);
-      await store.save();
+      await store.saveMember(member);
+      await store.saveAuthCredential(credential);
     }
 
     queueOtpEmail(email, otpCode);
@@ -330,7 +332,7 @@ export function registerAuthRoutes(ctx) {
     member.otpCode = null;
     member.otpExpiry = null;
 
-    await store.save();
+    await store.saveMember(member);
 
     console.log(`[EMAIL OTP] Xác thực thành công cho email: ${email}`);
 
@@ -350,7 +352,7 @@ export function registerAuthRoutes(ctx) {
     member.otpCode = otpCode;
     member.otpExpiry = otpExpiry;
 
-    await store.save();
+    await store.saveMember(member);
 
     queueOtpEmail(email, otpCode);
 
@@ -399,6 +401,7 @@ export function registerAuthRoutes(ctx) {
 
       if (existing) Object.assign(existing, nextIdentity);
       else identities.push(nextIdentity);
+      return nextIdentity;
     };
 
     if (store.dataSource === "sqlserver") {
@@ -419,9 +422,10 @@ export function registerAuthRoutes(ctx) {
       }
     } else {
       if (isNewMember) ensureMembers(store.db).push(member);
-      upsertIdentity();
+      const identity = upsertIdentity();
       try {
-        await store.save();
+        await store.saveMember(member);
+        await store.saveOAuthIdentity(identity);
       } catch (error) {
         console.error("Supabase OAuth member sync failed:", {
           dataSource: store.dataSource,

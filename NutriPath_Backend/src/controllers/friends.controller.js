@@ -144,7 +144,7 @@ export function registerFriendsRoutes(ctx) {
     };
 
     friendships.push(newFriendship);
-    await store.save();
+    await store.saveFriendship(newFriendship);
 
     return {
       success: true,
@@ -216,12 +216,12 @@ export function registerFriendsRoutes(ctx) {
     if (accept) {
       friendships[idx].status = "accepted";
       friendships[idx].updatedAt = new Date().toISOString();
+      await store.saveFriendship(friendships[idx]);
     } else {
       // Remove friendship record if declined or cancelled
-      friendships.splice(idx, 1);
+      const [deleted] = friendships.splice(idx, 1);
+      await store.deleteFriendship(deleted.id);
     }
-
-    await store.save();
 
     return {
       success: true,
@@ -246,8 +246,8 @@ export function registerFriendsRoutes(ctx) {
       notFound(req, "Không tìm thấy mối quan hệ bạn bè.");
     }
 
-    friendships.splice(idx, 1);
-    await store.save();
+    const [deleted] = friendships.splice(idx, 1);
+    await store.deleteFriendship(deleted.id);
 
     return {
       success: true,
@@ -332,7 +332,7 @@ export function registerFriendsRoutes(ctx) {
     };
 
     friendChats.push(newMessage);
-    await store.save();
+    await store.saveFriendChat(newMessage);
 
     // Broadcast to active SSE clients matching this conversation
     const targetClients = activeClients.filter(

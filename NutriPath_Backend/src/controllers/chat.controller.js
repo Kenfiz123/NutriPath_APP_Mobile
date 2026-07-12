@@ -238,7 +238,7 @@ export function registerChatRoutes(ctx) {
         },
       ];
       saveMemberChatMessages(store, activeSession.member, messages);
-      await store.save();
+      await store.saveChatHistoryForMember(activeSession.member.id);
       return {
         messages,
         adminOverride: true,
@@ -264,7 +264,7 @@ export function registerChatRoutes(ctx) {
     const { cleaned, blocked } = validateSafeChatInput(body.text, member, { adminOverride });
     if (blocked) {
       logDangerousChat(store, req, member, cleaned, blocked.reason);
-      await store.save();
+      await store.saveAiSafetyLogs();
       forbidden(chatBlockMessage(blocked.reason), {
         reason: blocked.reason,
       });
@@ -291,7 +291,8 @@ export function registerChatRoutes(ctx) {
     if (member) {
       member.stats.aiConversations = (member.stats.aiConversations || 0) + 1;
       saveMemberChatMessages(store, member, [userMessage, aiMessage]);
-      await store.save();
+      await store.saveMember(member);
+      await store.saveChatHistoryForMember(member.id);
     }
     return {
       messages: [userMessage, aiMessage],

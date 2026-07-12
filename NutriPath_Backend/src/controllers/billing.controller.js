@@ -391,7 +391,9 @@ export function registerBillingRoutes(ctx) {
       member = getMember(store.db, body.memberId);
     } else {
       store.db.payments.unshift(payment);
-      await store.save();
+      await store.savePayment(payment);
+      await store.saveMember(member);
+      await store.saveNotificationsForMember(member.id);
     }
 
     return { payment, member, quote, alreadyProcessed: false };
@@ -838,7 +840,9 @@ export function registerBillingRoutes(ctx) {
       member = getMember(store.db, body.memberId);
     } else {
       store.db.payments.unshift(payment);
-      await store.save();
+      await store.savePayment(payment);
+      await store.saveMember(member);
+      await store.saveNotificationsForMember(member.id);
     }
 
     return {
