@@ -336,8 +336,9 @@ export function registerNutritionRoutes(ctx) {
     const member = getMember(store.db, params.memberId);
     if (!member) notFound(req, "Member not found.");
     assertMealLogAccess(member, params.date);
-    const log = ensureMealLog(store, member.id, params.date);
-    await saveMealLogChanges(store, log);
+    const existing = store.db.mealLogs.find((log) => log.memberId === member.id && log.date === params.date);
+    const log = existing || ensureMealLog(store, member.id, params.date);
+    if (!existing) await saveMealLogChanges(store, log);
     return mealLogResource(req, log, member);
   });
 

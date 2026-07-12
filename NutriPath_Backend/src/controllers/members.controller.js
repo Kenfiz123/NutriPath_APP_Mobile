@@ -291,7 +291,6 @@ export function registerMembersRoutes(ctx) {
   route("GET", "/api/members/:memberId/notifications", async ({ req, store, params, url }) => {
     const { member } = assertMemberSessionAccess(req, store, params.memberId);
     const notifications = syncMemberNotifications(store, member);
-    await store.save();
     const unreadOnly = url.searchParams.get("unread") === "true";
     const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 30), 100));
     const visible = notifications
