@@ -216,14 +216,14 @@ export function registerCalculationsRoutes(ctx) {
       aiInsight = await generateSvipCalorieInsight(store, updatedMember, calculation);
       if (updatedMember.nutritionProfile) {
         updatedMember.nutritionProfile.aiInsight = aiInsight;
-        await store.save();
+        await store.saveMember(updatedMember);
       }
     }
     upsertNotification(store, updatedMember.id, "nutrition-profile", "Đã cập nhật hồ sơ dinh dưỡng", `Mục tiêu mới: ${updatedMember.calorieTarget} kcal/ngày, protein ${updatedMember.macroTargets.protein}g.`, {
       key: `${updatedMember.id}:nutrition-profile:${toLocalDateString()}`,
       actionHref: "/calculator",
     });
-    await store.save();
+    await store.saveNotificationsForMember(updatedMember.id);
 
     return {
       saved: true,

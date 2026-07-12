@@ -7,14 +7,10 @@ import '../../../core/models.dart';
 import '../../../core/widgets.dart';
 
 class WorkoutTracker extends ConsumerWidget {
-  const WorkoutTracker({
-    required this.log,
-    required this.onUpdate,
-    super.key,
-  });
+  const WorkoutTracker({required this.log, required this.onUpdate, super.key});
 
   final MealLog log;
-  final VoidCallback onUpdate;
+  final ValueChanged<MealLog> onUpdate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -70,10 +66,10 @@ class WorkoutTracker extends ConsumerWidget {
                       icon: const Icon(Icons.close),
                       onPressed: () async {
                         try {
-                          await ref
+                          final updated = await ref
                               .read(apiClientProvider)
                               .deleteWorkout(log.date, asString(workout['id']));
-                          onUpdate();
+                          onUpdate(updated);
                         } catch (e) {
                           if (context.mounted) {
                             showSnack(context, readableError(e));
@@ -96,8 +92,10 @@ class WorkoutTracker extends ConsumerWidget {
     );
     if (payload == null) return;
     try {
-      await ref.read(apiClientProvider).addWorkout(log.date, payload);
-      onUpdate();
+      final updated = await ref
+          .read(apiClientProvider)
+          .addWorkout(log.date, payload);
+      onUpdate(updated);
     } catch (e) {
       if (context.mounted) showSnack(context, readableError(e));
     }

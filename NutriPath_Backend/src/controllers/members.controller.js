@@ -218,7 +218,7 @@ export function registerMembersRoutes(ctx) {
       stats: { memberDays: 0, savedRecipes: 0, aiConversations: 0, trackedCalories: 0, streakDays: 0 },
     };
     store.db.members.push(member);
-    await store.save();
+    await store.saveMember(member);
     return memberResource(req, member, store.db);
   });
 
@@ -250,7 +250,7 @@ export function registerMembersRoutes(ctx) {
       if (allowed.has(key)) member[key] = value;
     }
     if (body.name) member.initials = initialsFromName(member.name);
-    await store.save();
+    await store.saveMember(member);
     return memberResource(req, member, store.db);
   });
 
@@ -258,7 +258,7 @@ export function registerMembersRoutes(ctx) {
     const before = store.db.members.length;
     store.db.members = store.db.members.filter((member) => member.id !== params.id);
     if (store.db.members.length === before) notFound(req, "Member not found.");
-    await store.save();
+    await store.deleteMember(params.id);
     return {
       deleted: params.id,
       _links: {
@@ -317,7 +317,7 @@ export function registerMembersRoutes(ctx) {
       notification.readAt ||= now;
       notification.updatedAt = now;
     }
-    await store.save();
+    await store.saveNotificationsForMember(member.id);
     return {
       updated: notifications.length,
       unreadCount: 0,
@@ -338,7 +338,7 @@ export function registerMembersRoutes(ctx) {
       notification.readAt = now;
     }
     notification.updatedAt = now;
-    await store.save();
+    await store.saveNotificationsForMember(member.id);
     return notificationResource(req, notification);
   });
 
