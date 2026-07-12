@@ -1,6 +1,7 @@
 import { seedData } from "./data/seed.js";
 
 let poolPromise = null;
+let schemaReadyPromise = null;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -59,6 +60,15 @@ async function getPgPool() {
 }
 
 async function ensureNormalizedSchema(pool) {
+  if (schemaReadyPromise) return schemaReadyPromise;
+  schemaReadyPromise = ensureNormalizedSchemaOnce(pool).catch((error) => {
+    schemaReadyPromise = null;
+    throw error;
+  });
+  return schemaReadyPromise;
+}
+
+async function ensureNormalizedSchemaOnce(pool) {
   const schema = quoteIdentifier(getSchema());
   await pool.query(`CREATE SCHEMA IF NOT EXISTS ${schema};`);
   await pool.query(`
@@ -432,6 +442,26 @@ export async function loadSupabaseNormalizedData() {
   });
 }
 
+export async function persistSupabaseMealLog(log) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(log?.id, `log-${Date.now().toString(36)}`);
+  const member_id = optionalText(log?.memberId);
+  const log_date = dateOnlyOrNull(log?.date);
+  if (!member_id || !log_date) {
+    throw new Error("Meal log must include memberId and date.");
+  }
+
+  await pool.query(
+    `INSERT INTO ${table("nutripath_meal_logs")} (id, member_id, log_date, data, updated_at)
+     VALUES ($1, $2, $3, $4::jsonb, now())
+     ON CONFLICT (member_id, log_date)
+     DO UPDATE SET id = EXCLUDED.id, data = EXCLUDED.data, updated_at = now();`,
+    [id, member_id, log_date, asJson(withColumnValues(log, { id, memberId: member_id, date: log_date }))],
+  );
+}
+
 async function deleteNormalizedRows(client) {
   const tables = [
     "nutripath_friend_chats",
@@ -704,4 +734,5 @@ export async function closeSupabaseNormalizedPool() {
   const pool = await poolPromise;
   await pool.end();
   poolPromise = null;
+  schemaReadyPromise = null;
 }

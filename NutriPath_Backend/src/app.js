@@ -2674,6 +2674,11 @@ async function updateMemberDailyCalorieGoal(store, member, dailyCalorieGoal) {
 async function saveMealLogChanges(store, log) {
   if (store.dataSource === "sqlserver") {
     await saveSqlServerMealLog(log);
+    return;
+  }
+  if (typeof store.saveMealLog === "function") {
+    await store.saveMealLog(log);
+    return;
   }
   await store.save();
 }

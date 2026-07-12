@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 import { healthyBeverageFoods, healthyDrinkRecipes, healthyVietnameseFoods, seedData } from "./data/seed.js";
 import { loadSqlServerData } from "./sqlserver-import.js";
 import { loadSupabaseData, persistSupabaseData, resetSupabaseData } from "./supabase-postgres-store.js";
-import { loadSupabaseNormalizedData, persistSupabaseNormalizedData, resetSupabaseNormalizedData } from "./supabase-normalized-store.js";
+import {
+  loadSupabaseNormalizedData,
+  persistSupabaseMealLog,
+  persistSupabaseNormalizedData,
+  resetSupabaseNormalizedData,
+} from "./supabase-normalized-store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -90,6 +95,7 @@ export async function createStore(options = {}) {
     const useAppState = ["app_state", "app-state", "jsonb", "legacy"].includes(storageMode) && !["supabase-normalized", "supabase_normalized"].includes(dataSource);
     const loadData = useAppState ? loadSupabaseData : loadSupabaseNormalizedData;
     const persistData = useAppState ? persistSupabaseData : persistSupabaseNormalizedData;
+    const persistMealLog = useAppState ? null : persistSupabaseMealLog;
     const resetData = useAppState ? resetSupabaseData : resetSupabaseNormalizedData;
     let cache = normalizeCatalogData(await loadData());
     let savePromise = Promise.resolve();
@@ -106,6 +112,12 @@ export async function createStore(options = {}) {
       },
       async save() {
         const nextSave = savePromise.then(() => persistData(cache));
+        savePromise = nextSave.catch(() => {});
+        await nextSave;
+        return cache;
+      },
+      async saveMealLog(log) {
+        const nextSave = savePromise.then(() => persistMealLog ? persistMealLog(log) : persistData(cache));
         savePromise = nextSave.catch(() => {});
         await nextSave;
         return cache;

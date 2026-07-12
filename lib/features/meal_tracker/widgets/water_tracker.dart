@@ -11,6 +11,7 @@ class WaterTracker extends ConsumerWidget {
   const WaterTracker({
     required this.log,
     required this.onUpdate,
+    this.onOptimisticUpdate,
     super.key,
   });
 
@@ -18,6 +19,7 @@ class WaterTracker extends ConsumerWidget {
 
   final MealLog log;
   final ValueChanged<MealLog> onUpdate;
+  final ValueChanged<MealLog>? onOptimisticUpdate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -66,12 +68,10 @@ class WaterTracker extends ConsumerWidget {
               IconButton(
                 onPressed: current > 0
                     ? () => _setWaterMl(
-                          context,
-                          ref,
-                          current - _waterStepMl < 0
-                              ? 0
-                              : current - _waterStepMl,
-                        )
+                        context,
+                        ref,
+                        current - _waterStepMl < 0 ? 0 : current - _waterStepMl,
+                      )
                     : null,
                 tooltip: 'Giảm 250 ml',
                 icon: const Icon(Icons.remove_circle_outline),
@@ -97,12 +97,15 @@ class WaterTracker extends ConsumerWidget {
     WidgetRef ref,
     int waterMl,
   ) async {
+    final previous = log;
+    onOptimisticUpdate?.call(_withWaterMl(waterMl));
     try {
       final updated = await ref
           .read(apiClientProvider)
           .updateWaterMl(log.date, waterMl);
       onUpdate(updated);
     } catch (e) {
+      onOptimisticUpdate?.call(previous);
       if (context.mounted) showSnack(context, readableError(e));
     }
   }
@@ -112,14 +115,44 @@ class WaterTracker extends ConsumerWidget {
     WidgetRef ref,
     int amountMl,
   ) async {
+    final previous = log;
+    onOptimisticUpdate?.call(_withWaterMl(log.waterMl + amountMl));
     try {
       final updated = await ref
           .read(apiClientProvider)
           .addWaterMl(log.date, amountMl);
       onUpdate(updated);
     } catch (e) {
+      onOptimisticUpdate?.call(previous);
       if (context.mounted) showSnack(context, readableError(e));
     }
+  }
+
+  MealLog _withWaterMl(int value) {
+    final waterMl = value < 0 ? 0 : value;
+    final targetFromSummary = log.summary.targets.waterMl.round();
+    final target = targetFromSummary > 0
+        ? targetFromSummary
+        : (log.summary.targets.waterGlasses * _waterStepMl).round();
+    final updatedGoals = log.goals.map((goal) {
+      if (asString(goal['id']) != 'water') return goal;
+      return <String, dynamic>{
+        ...goal,
+        'done': target > 0 && waterMl >= target,
+      };
+    }).toList();
+    return MealLog(
+      id: log.id,
+      memberId: log.memberId,
+      date: log.date,
+      waterMl: waterMl,
+      waterGlasses: (waterMl / _waterStepMl).round(),
+      activity: log.activity,
+      goals: updatedGoals,
+      meals: log.meals,
+      summary: log.summary,
+      access: log.access,
+    );
   }
 
   Future<void> _showAddWaterDialog(BuildContext context, WidgetRef ref) async {

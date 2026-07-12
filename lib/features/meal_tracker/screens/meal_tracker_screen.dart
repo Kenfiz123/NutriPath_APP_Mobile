@@ -34,10 +34,15 @@ class _MealTrackerScreenState extends ConsumerState<MealTrackerScreen> {
     });
   }
 
-  void _applyLog(MealLog log) {
+  void _stageLog(MealLog log) {
     setState(() {
       _localLog = log;
+      _lastLoggedDate = _date;
     });
+  }
+
+  void _applyLog(MealLog log) {
+    _stageLog(log);
     // Invalidate caches to trigger background sync for meal tracker and dashboard
     ref.invalidate(mealLogProvider(localDateString(_date)));
     ref.invalidate(dashboardDataProvider(localDateString(_date)));
@@ -66,12 +71,7 @@ class _MealTrackerScreenState extends ConsumerState<MealTrackerScreen> {
             ? _buildContent(_localLog!)
             : const LoadingPanel(),
         error: (err, stack) => NutriPage(
-          children: [
-            ErrorPanel(
-              error: err,
-              onRetry: () => _reload(),
-            ),
-          ],
+          children: [ErrorPanel(error: err, onRetry: () => _reload())],
         ),
         data: (log) {
           if (_localLog == null || _lastLoggedDate != _date) {
@@ -92,8 +92,12 @@ class _MealTrackerScreenState extends ConsumerState<MealTrackerScreen> {
           onPrev: () => _shift(-1),
           onNext: () => _shift(1),
         ),
-        WaterTracker(log: log, onUpdate: _applyLog),
-        WorkoutTracker(log: log, onUpdate: _reload),
+        WaterTracker(
+          log: log,
+          onUpdate: _applyLog,
+          onOptimisticUpdate: _stageLog,
+        ),
+        WorkoutTracker(log: log, onUpdate: _applyLog),
         for (final m in log.meals)
           MealSectionWidget(meal: m, date: _date, onUpdate: _applyLog),
       ],
