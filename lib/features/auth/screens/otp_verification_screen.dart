@@ -28,6 +28,12 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   Timer? _timer;
 
   @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  @override
   void dispose() {
     _otp.dispose();
     _timer?.cancel();

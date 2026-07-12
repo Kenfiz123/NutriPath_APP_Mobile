@@ -81,48 +81,50 @@ class _FullAdminScreenState extends ConsumerState<FullAdminScreen> {
         final data = snapshot.data!;
         return DefaultTabController(
           length: 6,
-          child: NutriPage(
-            children: [
-              SectionHeader(
-                title: 'Admin',
-                subtitle: 'Quản trị user, content, analytics, AI và bảo mật.',
-                action: IconButton.filledTonal(
-                  tooltip: 'Tải lại',
-                  onPressed: _reload,
-                  icon: const Icon(Icons.refresh),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                SectionHeader(
+                  title: 'Admin',
+                  subtitle: 'Quản trị user, content, analytics, AI và bảo mật.',
+                  action: IconButton.filledTonal(
+                    tooltip: 'Tải lại',
+                    onPressed: _reload,
+                    icon: const Icon(Icons.refresh),
+                  ),
                 ),
-              ),
-              const TabBar(
-                isScrollable: true,
-                tabs: [
-                  Tab(text: 'Tổng quan'),
-                  Tab(text: 'Users'),
-                  Tab(text: 'Content'),
-                  Tab(text: 'Analytics'),
-                  Tab(text: 'AI'),
-                  Tab(text: 'System'),
-                ],
-              ),
-              SizedBox(
-                height: 720,
-                child: TabBarView(
-                  children: [
-                    AdminOverviewTab(overview: data.overview),
-                    AdminTextSearchTab(users: data.users),
-                    AdminContentTab(content: data.content),
-                    AdminAnalyticsTab(analytics: data.analytics),
-                    AdminAiSecurityTab(
-                      aiSettings: data.aiSettings,
-                      security: data.security,
-                      safetyLogs: data.safetyLogs,
-                      onToggleAi: _updateAiSetting,
-                      onToggleSecurity: _updateSecurity,
-                    ),
-                    AdminSystemTab(system: data.system),
+                const TabBar(
+                  isScrollable: true,
+                  tabs: [
+                    Tab(text: 'Tổng quan'),
+                    Tab(text: 'Users'),
+                    Tab(text: 'Content'),
+                    Tab(text: 'Analytics'),
+                    Tab(text: 'AI'),
+                    Tab(text: 'System'),
                   ],
                 ),
-              ),
-            ],
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      AdminOverviewTab(overview: data.overview),
+                      AdminTextSearchTab(users: data.users),
+                      AdminContentTab(content: data.content),
+                      AdminAnalyticsTab(analytics: data.analytics),
+                      AdminAiSecurityTab(
+                        aiSettings: data.aiSettings,
+                        security: data.security,
+                        safetyLogs: data.safetyLogs,
+                        onToggleAi: _updateAiSetting,
+                        onToggleSecurity: _updateSecurity,
+                      ),
+                      AdminSystemTab(system: data.system),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

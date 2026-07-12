@@ -88,14 +88,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 labelText: AppStrings.fullNameLabel,
                 prefixIcon: Icon(Icons.person_outline),
               ),
+              validator: (v) =>
+              (v == null || v.trim().isEmpty) ? AppStrings.errorEmptyFields : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _email,
+              keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
                 labelText: AppStrings.emailLabel,
                 prefixIcon: Icon(Icons.email_outlined),
               ),
+              validator: (v) {
+                final value = v?.trim() ?? '';
+                if (value.isEmpty) return AppStrings.errorEmptyFields;
+                final valid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
+                return valid ? null : 'Email không hợp lệ';
+              },
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -105,6 +114,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 labelText: AppStrings.passwordLabel,
                 prefixIcon: Icon(Icons.lock_outline),
               ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return AppStrings.errorEmptyFields;
+                if (v.length < 6) return 'Mật khẩu cần ít nhất 6 ký tự';
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             Row(
@@ -154,6 +168,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       controller: ctrl,
       keyboardType: TextInputType.number,
       decoration: InputDecoration(labelText: label),
+      validator: (v) {
+        final value = double.tryParse(v?.trim() ?? '');
+        if (value == null || value <= 0) return 'Không hợp lệ';
+        return null;
+      },
     );
   }
 }

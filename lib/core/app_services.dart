@@ -60,11 +60,11 @@ class ApiClient {
   void close() => _client.close();
 
   Future<JsonMap> _request(
-    String path, {
-    String method = 'GET',
-    Object? body,
-    bool auth = true,
-  }) async {
+      String path, {
+        String method = 'GET',
+        Object? body,
+        bool auth = true,
+      }) async {
     final uri = Uri.parse('${AppConfig.apiBaseUrl}$path');
     final headers = <String, String>{'Content-Type': 'application/json'};
     final token = auth ? tokenProvider() : null;
@@ -301,10 +301,10 @@ class ApiClient {
   }
 
   Future<MealLog> addMealItem(
-    String date,
-    String mealId,
-    Object payload,
-  ) async {
+      String date,
+      String mealId,
+      Object payload,
+      ) async {
     final body = payload is String ? {'foodId': payload} : payload;
     final json = await _request(
       '/api/members/${_memberId()}/meal-logs/${Uri.encodeComponent(date)}/meals/$mealId/items',
@@ -315,10 +315,10 @@ class ApiClient {
   }
 
   Future<MealLog> deleteMealItem(
-    String date,
-    String mealId,
-    String itemId,
-  ) async {
+      String date,
+      String mealId,
+      String itemId,
+      ) async {
     final json = await _request(
       '/api/members/${_memberId()}/meal-logs/${Uri.encodeComponent(date)}/meals/$mealId/items/$itemId',
       method: 'DELETE',
@@ -478,12 +478,12 @@ class ApiClient {
     body.putIfAbsent('memberId', _memberId);
     body.putIfAbsent(
       'successUrl',
-      () =>
-          '${AppConfig.apiBaseUrl}/api/stripe/checkout/success?session_id={CHECKOUT_SESSION_ID}',
+          () =>
+      '${AppConfig.apiBaseUrl}/api/stripe/checkout/success?session_id={CHECKOUT_SESSION_ID}',
     );
     body.putIfAbsent(
       'cancelUrl',
-      () => '${AppConfig.apiBaseUrl}/api/stripe/checkout/cancel',
+          () => '${AppConfig.apiBaseUrl}/api/stripe/checkout/cancel',
     );
     return _request(
       '/api/stripe/checkout-sessions',
@@ -543,8 +543,8 @@ class ApiClient {
     final incomingList = json['incoming'] as List? ?? [];
     final outgoingList = json['outgoing'] as List? ?? [];
     return (
-      incoming: incomingList.map(FriendRequest.fromJson).toList(),
-      outgoing: outgoingList.map(FriendRequest.fromJson).toList(),
+    incoming: incomingList.map(FriendRequest.fromJson).toList(),
+    outgoing: outgoingList.map(FriendRequest.fromJson).toList(),
     );
   }
 
@@ -584,9 +584,9 @@ class ApiClient {
   }
 
   Future<Member> updateMemberProfile(
-    JsonMap payload, {
-    String? memberId,
-  }) async {
+      JsonMap payload, {
+        String? memberId,
+      }) async {
     final json = await _request(
       '/api/members/${memberId ?? _memberId()}',
       method: 'PATCH',
@@ -852,8 +852,8 @@ class SessionController extends ChangeNotifier {
 }
 
 final sessionControllerProvider = ChangeNotifierProvider<SessionController>((
-  ref,
-) {
+    ref,
+    ) {
   final controller = SessionController();
   controller.restore();
   return controller;
@@ -931,20 +931,7 @@ final friendsListProvider = FutureProvider<List<Friend>>((ref) async {
 
 final friendRequestsProvider = FutureProvider<({List<FriendRequest> incoming, List<FriendRequest> outgoing})>((ref) async {
   ref.watch(sessionControllerProvider);
-  try {
-    final result = await ref.read(apiClientProvider).getFriendRequests();
-    debugPrint('DEBUG: friendRequestsProvider returning incoming=${result.incoming.length}, outgoing=${result.outgoing.length}');
-    for (final req in result.incoming) {
-      debugPrint('DEBUG: Incoming req: id=${req.id}, friendId=${req.friendId}, email=${req.email}');
-    }
-    for (final req in result.outgoing) {
-      debugPrint('DEBUG: Outgoing req: id=${req.id}, friendId=${req.friendId}, email=${req.email}');
-    }
-    return result;
-  } catch (e, stack) {
-    debugPrint('DEBUG: friendRequestsProvider error: $e\n$stack');
-    rethrow;
-  }
+  return ref.read(apiClientProvider).getFriendRequests();
 });
 
 final userSearchProvider = FutureProvider.family<List<Friend>, String>((ref, query) async {

@@ -47,8 +47,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final path = state.uri.path;
       final isAuthPage =
           path == AppRoutes.login ||
-          path == AppRoutes.register ||
-          path == AppRoutes.verifyOtp;
+              path == AppRoutes.register ||
+              path == AppRoutes.verifyOtp;
       if (isAuthPage && session.isLoggedIn) return AppRoutes.dashboard;
       final isProtected = protectedPaths.contains(path) ||
           path.startsWith('${AppRoutes.userProfile}/') ||
@@ -179,11 +179,11 @@ class AppShell extends ConsumerWidget {
     final selectedIndex = _selectedIndex(location);
     final isFriendChat =
         location == AppRoutes.friendChat ||
-        location.startsWith('${AppRoutes.friendChat}/');
+            location.startsWith('${AppRoutes.friendChat}/');
     final canOpenChat =
         location != AppRoutes.login &&
-        location != AppRoutes.register &&
-        !isFriendChat;
+            location != AppRoutes.register &&
+            !isFriendChat;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -223,7 +223,7 @@ class AppShell extends ConsumerWidget {
             onPressed: () {
               final current = ref.read(themeModeProvider);
               ref.read(themeModeProvider.notifier).state =
-                  current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+              current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
             },
             icon: const Icon(Icons.dark_mode_outlined),
           ),
@@ -232,22 +232,25 @@ class AppShell extends ConsumerWidget {
       body: session.initialized ? child : const _StartupLoading(),
       floatingActionButton: canOpenChat
           ? FloatingActionButton(
-              tooltip: 'Chat NutriBot',
-              onPressed: () => showChatSheet(context),
-              child: const Icon(Icons.chat_bubble_outline),
-            )
+        tooltip: 'Chat NutriBot',
+        onPressed: () => showChatSheet(context),
+        child: const Icon(Icons.chat_bubble_outline),
+      )
           : null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-        onDestinationSelected: (index) => context.go(_destinations[index].path),
+      bottomNavigationBar: selectedIndex < 0
+          ? null
+          : NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (index) =>
+            context.go(_destinations[index].path),
         destinations: _destinations
             .map(
               (item) => NavigationDestination(
-                icon: Icon(item.icon),
-                selectedIcon: Icon(item.selectedIcon),
-                label: item.label,
-              ),
-            )
+            icon: Icon(item.icon),
+            selectedIcon: Icon(item.selectedIcon),
+            label: item.label,
+          ),
+        )
             .toList(),
       ),
     );

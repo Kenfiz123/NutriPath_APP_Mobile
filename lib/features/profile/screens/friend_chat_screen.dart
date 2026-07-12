@@ -24,8 +24,12 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   Timer? _fallbackTimer;
+  Timer? _reconnectTimer;
   http.Client? _sseClient;
   bool _sending = false;
+  bool _sseConnected = false;
+  int _reconnectAttempt = 0;
+  static const _maxBackoffSeconds = 30;
   int _lastMsgCount = 0;
 
   List<FriendChatMessage> _messages = [];
@@ -38,13 +42,16 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
     _loadInitialHistory();
     _startSseListener();
     _fallbackTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _pollChatHistorySilent();
+      if (!_sseConnected) {
+        _pollChatHistorySilent();
+      }
     });
   }
 
   @override
   void dispose() {
     _fallbackTimer?.cancel();
+    _reconnectTimer?.cancel();
     _sseClient?.close();
     _messageController.dispose();
     _scrollController.dispose();
@@ -90,7 +97,7 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
           if (_messages.length > _lastMsgCount) {
             _lastMsgCount = _messages.length;
             WidgetsBinding.instance.addPostFrameCallback(
-              (_) => _scrollToBottom(),
+                  (_) => _scrollToBottom(),
             );
           }
         });
@@ -115,60 +122,74 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
       request.headers['Cache-Control'] = 'no-cache';
 
       final response = await _sseClient!.send(request);
+      if (response.statusCode != 200) {
+        _reconnectSse();
+        return;
+      }
+
+      _sseConnected = true;
+      _reconnectAttempt = 0;
 
       response.stream
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen(
             (line) {
-              if (line.startsWith('data: ')) {
-                final dataStr = line.substring(6).trim();
-                if (dataStr == 'connected') return;
-                try {
-                  final newMsg = FriendChatMessage.fromJson(
-                    jsonDecode(dataStr),
-                  );
-                  if (mounted) {
-                    setState(() {
-                      if (!_messages.any((m) => m.id == newMsg.id)) {
-                        _messages.add(newMsg);
-                        _messages.sort(
+          if (line.startsWith('data: ')) {
+            final dataStr = line.substring(6).trim();
+            if (dataStr == 'connected') return;
+            try {
+              final newMsg = FriendChatMessage.fromJson(
+                jsonDecode(dataStr),
+              );
+              if (mounted) {
+                setState(() {
+                  if (!_messages.any((m) => m.id == newMsg.id)) {
+                    _messages.add(newMsg);
+                    _messages.sort(
                           (a, b) => a.createdAt.compareTo(b.createdAt),
-                        );
-                      }
-                      if (_messages.length > _lastMsgCount) {
-                        _lastMsgCount = _messages.length;
-                        WidgetsBinding.instance.addPostFrameCallback(
-                          (_) => _scrollToBottom(),
-                        );
-                      }
-                    });
+                    );
                   }
-                } catch (_) {}
+                  if (_messages.length > _lastMsgCount) {
+                    _lastMsgCount = _messages.length;
+                    WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _scrollToBottom(),
+                    );
+                  }
+                });
               }
-            },
-            onError: (e) {
-              _reconnectSse();
-            },
-            onDone: () {
-              _reconnectSse();
-            },
-            cancelOnError: true,
-          );
+            } catch (_) {}
+          }
+        },
+        onError: (e) {
+          _sseConnected = false;
+          _reconnectSse();
+        },
+        onDone: () {
+          _sseConnected = false;
+          _reconnectSse();
+        },
+        cancelOnError: true,
+      );
     } catch (_) {
+      _sseConnected = false;
       _reconnectSse();
     }
   }
 
   void _reconnectSse() {
     _sseClient?.close();
-    if (mounted) {
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          _startSseListener();
-        }
-      });
-    }
+    _reconnectTimer?.cancel();
+    if (!mounted) return;
+    // Exponential backoff (2s, 4s, 8s, 16s, capped at 30s) so a persistently
+    // unreachable server doesn't get hammered with reconnect attempts.
+    final delaySeconds = (2 << _reconnectAttempt).clamp(2, _maxBackoffSeconds).toInt();
+    if (_reconnectAttempt < 10) _reconnectAttempt++;
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      if (mounted) {
+        _startSseListener();
+      }
+    });
   }
 
   void _scrollToBottom() {
@@ -376,13 +397,13 @@ class _FriendChatScreenState extends ConsumerState<FriendChatScreen> {
                 ),
                 icon: _sending
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
                     : const Icon(Icons.send_rounded),
                 onPressed: _sending ? null : _sendMessage,
               ),
