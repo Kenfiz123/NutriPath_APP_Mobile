@@ -31,6 +31,18 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Quay lại',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              final router = GoRouter.of(context);
+              if (router.canPop()) {
+                context.pop();
+              } else {
+                context.go(AppRoutes.profile);
+              }
+            },
+          ),
           title: const Text('Bạn bè'),
           bottom: const TabBar(
             tabs: [
@@ -65,7 +77,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             ErrorPanel(
               error: err,
               onRetry: () => ref.invalidate(friendsListProvider),
-            )
+            ),
           ],
         ),
         data: (friends) {
@@ -73,7 +85,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             return _buildScrollableContainer(
               const EmptyState(
                 title: 'Chưa có bạn bè',
-                message: 'Hãy sang tab Tìm kiếm để kết nối với người dùng khác!',
+                message:
+                    'Hãy sang tab Tìm kiếm để kết nối với người dùng khác!',
                 icon: Icons.people_outline,
               ),
             );
@@ -108,12 +121,17 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                       TierChip(tier: friend.tier),
                       const SizedBox(width: 4),
                       IconButton(
-                        icon: const Icon(Icons.chat_bubble_outline, color: AppColors.primary),
-                        onPressed: () => context.go('${AppRoutes.friendChat}/${friend.id}'),
+                        icon: const Icon(
+                          Icons.chat_bubble_outline,
+                          color: AppColors.primary,
+                        ),
+                        onPressed: () =>
+                            context.go('${AppRoutes.friendChat}/${friend.id}'),
                       ),
                     ],
                   ),
-                  onTap: () => context.go('${AppRoutes.userProfile}/${friend.id}'),
+                  onTap: () =>
+                      context.go('${AppRoutes.userProfile}/${friend.id}'),
                 ),
               );
             },
@@ -137,7 +155,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             ErrorPanel(
               error: err,
               onRetry: () => ref.invalidate(friendRequestsProvider),
-            )
+            ),
           ],
         ),
         data: (requests) {
@@ -185,7 +203,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                 child: Text(
                   req.initials,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -195,9 +216,15 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   children: [
                     Text(
                       req.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                    Text(req.email, style: const TextStyle(color: AppColors.muted)),
+                    Text(
+                      req.email,
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
                   ],
                 ),
               ),
@@ -210,7 +237,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             children: [
               TextButton(
                 onPressed: () => _respondRequest(req.friendId, false),
-                child: const Text('Từ chối', style: TextStyle(color: AppColors.red)),
+                child: const Text(
+                  'Từ chối',
+                  style: TextStyle(color: AppColors.red),
+                ),
               ),
               const SizedBox(width: 8),
               FilledButton(
@@ -236,7 +266,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             backgroundColor: AppColors.muted.withValues(alpha: 0.1),
             child: Text(
               req.initials,
-              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.muted),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.muted,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -246,7 +279,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               children: [
                 Text(
                   req.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 Text(req.email, style: const TextStyle(color: AppColors.muted)),
               ],
@@ -307,8 +343,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                     children: [
                       ErrorPanel(
                         error: err,
-                        onRetry: () => ref.invalidate(userSearchProvider(_searchQuery)),
-                      )
+                        onRetry: () =>
+                            ref.invalidate(userSearchProvider(_searchQuery)),
+                      ),
                     ],
                   ),
                   data: (results) {
@@ -322,22 +359,30 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                     return ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: results.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final user = results[index];
                         return NutriCard(
                           padding: EdgeInsets.zero,
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
                               child: Text(
                                 user.initials,
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
                             title: Text(
                               user.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             subtitle: Text(user.email),
                             trailing: Row(
@@ -345,10 +390,15 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                               children: [
                                 _buildStatusBadge(user.friendshipStatus),
                                 const SizedBox(width: 8),
-                                const Icon(Icons.chevron_right, color: AppColors.muted),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  color: AppColors.muted,
+                                ),
                               ],
                             ),
-                            onTap: () => context.go('${AppRoutes.userProfile}/${user.id}'),
+                            onTap: () => context.go(
+                              '${AppRoutes.userProfile}/${user.id}',
+                            ),
                           ),
                         );
                       },
@@ -390,7 +440,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

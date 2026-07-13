@@ -47,10 +47,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       final path = state.uri.path;
       final isAuthPage =
           path == AppRoutes.login ||
-              path == AppRoutes.register ||
-              path == AppRoutes.verifyOtp;
+          path == AppRoutes.register ||
+          path == AppRoutes.verifyOtp;
       if (isAuthPage && session.isLoggedIn) return AppRoutes.dashboard;
-      final isProtected = protectedPaths.contains(path) ||
+      final isProtected =
+          protectedPaths.contains(path) ||
           path.startsWith('${AppRoutes.userProfile}/') ||
           path.startsWith('${AppRoutes.friendChat}/');
       if (isProtected && !session.isLoggedIn) {
@@ -179,28 +180,50 @@ class AppShell extends ConsumerWidget {
     final selectedIndex = _selectedIndex(location);
     final isFriendChat =
         location == AppRoutes.friendChat ||
-            location.startsWith('${AppRoutes.friendChat}/');
+        location.startsWith('${AppRoutes.friendChat}/');
     final canOpenChat =
         location != AppRoutes.login &&
-            location != AppRoutes.register &&
-            !isFriendChat;
+        location != AppRoutes.register &&
+        !isFriendChat;
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.eco, color: Colors.white, size: 20),
+        title: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => context.go(AppRoutes.dashboard),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.eco, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: AppSizes.sm),
+                const Text('NutriPath'),
+              ],
             ),
-            const SizedBox(width: AppSizes.sm),
-            const Text('NutriPath'),
-          ],
+          ),
         ),
+        leading: selectedIndex < 0
+            ? IconButton(
+                tooltip: 'Quay lại',
+                onPressed: () {
+                  final router = GoRouter.of(context);
+                  if (router.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(AppRoutes.dashboard);
+                  }
+                },
+                icon: const Icon(Icons.arrow_back),
+              )
+            : null,
         actions: [
           IconButton(
             tooltip: 'Tính calo',
@@ -223,7 +246,7 @@ class AppShell extends ConsumerWidget {
             onPressed: () {
               final current = ref.read(themeModeProvider);
               ref.read(themeModeProvider.notifier).state =
-              current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+                  current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
             },
             icon: const Icon(Icons.dark_mode_outlined),
           ),
@@ -232,31 +255,35 @@ class AppShell extends ConsumerWidget {
       body: session.initialized ? child : const _StartupLoading(),
       floatingActionButton: canOpenChat
           ? FloatingActionButton(
-        tooltip: 'Chat NutriBot',
-        onPressed: () => showChatSheet(context),
-        child: const Icon(Icons.chat_bubble_outline),
-      )
+              tooltip: 'Chat NutriBot',
+              onPressed: () => showChatSheet(context),
+              child: const Icon(Icons.chat_bubble_outline),
+            )
           : null,
       bottomNavigationBar: selectedIndex < 0
           ? null
           : NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) =>
-            context.go(_destinations[index].path),
-        destinations: _destinations
-            .map(
-              (item) => NavigationDestination(
-            icon: Icon(item.icon),
-            selectedIcon: Icon(item.selectedIcon),
-            label: item.label,
-          ),
-        )
-            .toList(),
-      ),
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (index) =>
+                  context.go(_destinations[index].path),
+              destinations: _destinations
+                  .map(
+                    (item) => NavigationDestination(
+                      icon: Icon(item.icon),
+                      selectedIcon: Icon(item.selectedIcon),
+                      label: item.label,
+                    ),
+                  )
+                  .toList(),
+            ),
     );
   }
 
   int _selectedIndex(String path) {
+    if (path == AppRoutes.friends ||
+        path.startsWith('${AppRoutes.userProfile}/')) {
+      return _destinations.indexWhere((item) => item.path == AppRoutes.profile);
+    }
     final index = _destinations.indexWhere((item) => item.path == path);
     return index;
   }
