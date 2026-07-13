@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { sendOtpEmail } from "../email.js";
+import { sendOtpEmail, sendPasswordResetEmail } from "../email.js";
 
 export function registerAuthRoutes(ctx) {
   const {
@@ -192,6 +192,18 @@ export function registerAuthRoutes(ctx) {
     }, delayMs);
   }
 
+  function queuePasswordResetEmail(email, otpCode) {
+    const configuredDelay = process.env.PASSWORD_RESET_EMAIL_BACKGROUND_DELAY_MS
+      ?? process.env.OTP_EMAIL_BACKGROUND_DELAY_MS
+      ?? 3000;
+    const delayMs = Math.max(0, Number(configuredDelay));
+    setTimeout(() => {
+      sendPasswordResetEmail({ email, otpCode }).catch((error) => {
+        console.error("[PASSWORD RESET] Background send failed:", error?.message || error);
+      });
+    }, delayMs);
+  }
+
   route("POST", "/api/auth/register", async ({ req, store, body }) => {
     requireFields(body, ["name", "email", "password"]);
     const email = normalizeEmail(body.email);
@@ -359,6 +371,80 @@ export function registerAuthRoutes(ctx) {
     return {
       success: true,
       message: "Mã OTP mới đã được gửi về email của bạn.",
+    };
+  });
+
+  route("POST", "/api/auth/forgot-password", async ({ store, body }) => {
+    requireFields(body, ["email"]);
+    const email = normalizeEmail(body.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) badRequest("Email khong hop le.");
+
+    const credential = findCredentialByEmail(store.db, email);
+    const member = findMemberByEmail(store.db, email)
+      || (credential ? getMember(store.db, credential.memberId) : null);
+
+    if (credential && member) {
+      const otpCode = String(100000 + Math.floor(Math.random() * 900000));
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      member.passwordResetCode = otpCode;
+      member.passwordResetExpiry = otpExpiry;
+      member.passwordResetRequestedAt = new Date().toISOString();
+
+      await store.saveMember(member);
+      queuePasswordResetEmail(email, otpCode);
+    }
+
+    return {
+      success: true,
+      email,
+      message: "Neu email ton tai, ma xac nhan dat lai mat khau se duoc gui trong it phut.",
+    };
+  });
+
+  route("POST", "/api/auth/reset-password", async ({ store, body }) => {
+    requireFields(body, ["email", "password"]);
+    const email = normalizeEmail(body.email);
+    const resetCode = String(body.code ?? body.otp ?? "").trim();
+    const password = String(body.password);
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) badRequest("Email khong hop le.");
+    if (!resetCode) badRequest("Vui long nhap ma xac nhan.");
+    if (password.length < 6) badRequest("Mat khau moi can it nhat 6 ky tu.");
+
+    const credential = findCredentialByEmail(store.db, email);
+    const member = findMemberByEmail(store.db, email)
+      || (credential ? getMember(store.db, credential.memberId) : null);
+    if (!credential || !member) badRequest("Email hoac ma xac nhan khong hop le.");
+
+    if (!member.passwordResetCode || !member.passwordResetExpiry) {
+      badRequest("Khong tim thay yeu cau dat lai mat khau. Vui long gui lai ma.");
+    }
+
+    if (new Date().toISOString() > member.passwordResetExpiry) {
+      badRequest("Ma xac nhan da het han. Vui long gui lai ma.");
+    }
+
+    if (member.passwordResetCode !== resetCode) {
+      badRequest("Ma xac nhan khong dung.");
+    }
+
+    const hashed = hashPassword(password);
+    credential.passwordHash = hashed.passwordHash;
+    credential.passwordSalt = hashed.passwordSalt;
+    credential.updatedAt = new Date().toISOString();
+    member.passwordResetCode = null;
+    member.passwordResetExpiry = null;
+    member.passwordResetRequestedAt = null;
+
+    await store.saveAuthCredential(credential);
+    await store.saveMember(member);
+
+    console.log(`[PASSWORD RESET] Da dat lai mat khau cho email: ${email}`);
+
+    return {
+      success: true,
+      message: "Mat khau moi da duoc cap nhat. Vui long dang nhap lai.",
     };
   });
 

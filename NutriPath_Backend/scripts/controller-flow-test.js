@@ -14,12 +14,14 @@ const originalEmailProvider = process.env.EMAIL_PROVIDER;
 const originalBrevoApiKey = process.env.BREVO_API_KEY;
 const originalSmtpUser = process.env.SMTP_USER;
 const originalSmtpPass = process.env.SMTP_PASS;
+const originalOtpDelay = process.env.OTP_EMAIL_BACKGROUND_DELAY_MS;
 let latestOtpCode = "";
 
 process.env.EMAIL_PROVIDER = "";
 process.env.BREVO_API_KEY = "";
 process.env.SMTP_USER = "";
 process.env.SMTP_PASS = "";
+process.env.OTP_EMAIL_BACKGROUND_DELAY_MS = "0";
 console.log = (...args) => {
   const message = args.join(" ");
   const match = message.match(/\b(\d{6})\b/);
@@ -86,8 +88,36 @@ try {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  const token = loggedIn.token;
+  let token = loggedIn.token;
   const memberId = loggedIn.member.id;
+  assert.ok(token);
+
+  latestOtpCode = "";
+  const nextPassword = "Flow@654321";
+  const { json: resetRequested } = await request("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  assert.equal(resetRequested.success, true);
+  assert.ok(await waitForOtpCode());
+
+  const { json: resetDone } = await request("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ email, code: latestOtpCode, password: nextPassword }),
+  });
+  assert.equal(resetDone.success, true);
+
+  await request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+    expectStatus: 401,
+  });
+
+  const { json: reloggedIn } = await request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password: nextPassword }),
+  });
+  token = reloggedIn.token;
   assert.ok(token);
 
   const headers = authHeaders(token);
@@ -194,6 +224,7 @@ try {
   process.env.BREVO_API_KEY = originalBrevoApiKey;
   process.env.SMTP_USER = originalSmtpUser;
   process.env.SMTP_PASS = originalSmtpPass;
+  process.env.OTP_EMAIL_BACKGROUND_DELAY_MS = originalOtpDelay;
   await new Promise((resolve) => server.close(resolve));
   await unlink(dbPath).catch(() => {});
 }

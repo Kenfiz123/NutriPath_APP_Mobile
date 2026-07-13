@@ -185,6 +185,28 @@ class ApiClient {
     );
   }
 
+  Future<void> requestPasswordReset(String email) async {
+    await _request(
+      '/api/auth/forgot-password',
+      method: 'POST',
+      auth: false,
+      body: {'email': email},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    await _request(
+      '/api/auth/reset-password',
+      method: 'POST',
+      auth: false,
+      body: {'email': email, 'code': code, 'password': password},
+    );
+  }
+
   Future<Member> getMe() async {
     final json = await _request('/api/auth/me');
     return Member.fromJson(json['member']);

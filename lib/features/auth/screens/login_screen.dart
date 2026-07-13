@@ -46,7 +46,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
       if (error is ApiException && error.code == 'unverified') {
         final email = error.payload?['email']?.toString() ?? _email.text.trim();
-        context.go('${AppRoutes.verifyOtp}?email=${Uri.encodeComponent(email)}');
+        context.go(
+          '${AppRoutes.verifyOtp}?email=${Uri.encodeComponent(email)}',
+        );
       } else {
         setState(() => _formError = readableError(error));
       }
@@ -93,6 +95,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               validator: (v) => v!.isEmpty ? AppStrings.errorEmptyFields : null,
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: session.busy
+                    ? null
+                    : () => context.go(AppRoutes.forgotPassword),
+                child: const Text('Quên mật khẩu?'),
+              ),
             ),
             const SizedBox(height: 24),
             FilledButton(

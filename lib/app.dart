@@ -9,6 +9,7 @@ import 'core/constants/app_routes.dart';
 import 'core/constants/app_sizes.dart';
 import 'features/admin/screens/admin_screen.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/forgot_password_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/otp_verification_screen.dart';
 import 'features/calculator/screens/full_calculator_screen.dart';
@@ -48,7 +49,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthPage =
           path == AppRoutes.login ||
           path == AppRoutes.register ||
-          path == AppRoutes.verifyOtp;
+          path == AppRoutes.verifyOtp ||
+          path == AppRoutes.forgotPassword;
       if (isAuthPage && session.isLoggedIn) return AppRoutes.dashboard;
       final isProtected =
           protectedPaths.contains(path) ||
@@ -85,6 +87,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => OtpVerificationScreen(
           email: state.uri.queryParameters['email'] ?? '',
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: '${AppRoutes.friendChat}/:id',

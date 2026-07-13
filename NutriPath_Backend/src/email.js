@@ -5,9 +5,9 @@ function envTimeoutMs(name, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-function printOtpFallback(email, otpCode, label = "EMAIL OTP FALLBACK") {
+function printOtpFallback(email, otpCode, label = "EMAIL OTP FALLBACK", context = "Dang ky thanh vien moi") {
   console.log(`\n==============================================`);
-  if (email) console.log(`[${label}] Dang ky thanh vien moi: ${email}`);
+  if (email) console.log(`[${label}] ${context}: ${email}`);
   console.log(`[${label}] Ma xac thuc OTP cua ban la: ${otpCode}`);
   console.log(`==============================================\n`);
 }
@@ -42,7 +42,25 @@ function buildOtpEmail(otpCode) {
   return { subject, htmlContent };
 }
 
-async function sendBrevoEmail({ email, subject, htmlContent, otpCode }) {
+function buildPasswordResetEmail(otpCode) {
+  const subject = "Ma xac nhan dat lai mat khau NutriPath";
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <h2 style="color: #4CAF50; text-align: center;">Dat lai mat khau NutriPath</h2>
+      <p>Chao ban,</p>
+      <p>NutriPath da nhan duoc yeu cau dat lai mat khau cho tai khoan cua ban. Vui long nhap ma xac nhan duoi day trong ung dung:</p>
+      <div style="background-color: #f9f9f9; padding: 15px; text-align: center; border-radius: 4px; margin: 20px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333;">${otpCode}</span>
+      </div>
+      <p style="color: #666; font-size: 13px;">Ma nay co hieu luc trong vong <strong>10 phut</strong>. Neu ban khong yeu cau dat lai mat khau, hay bo qua email nay.</p>
+      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="color: #999; font-size: 11px; text-align: center;">Day la email tu dong tu he thong NutriPath, vui long khong tra loi email nay.</p>
+    </div>
+  `;
+  return { subject, htmlContent };
+}
+
+async function sendBrevoEmail({ email, subject, htmlContent, otpCode, fallbackLabel = "EMAIL OTP", fallbackContext = "Dang ky thanh vien moi" }) {
   const apiKey = String(process.env.BREVO_API_KEY || "").trim();
   const endpoint = String(process.env.BREVO_API_URL || "https://api.brevo.com/v3/smtp/email").trim();
   const fallbackFrom = process.env.SMTP_FROM || process.env.SMTP_USER || "";
@@ -52,7 +70,7 @@ async function sendBrevoEmail({ email, subject, htmlContent, otpCode }) {
 
   if (!apiKey || !fromEmail) {
     console.log("[BREVO WARNING] BREVO_API_KEY hoac BREVO_FROM_EMAIL chua duoc cau hinh.");
-    printOtpFallback(email, otpCode, "EMAIL OTP");
+    printOtpFallback(email, otpCode, fallbackLabel, fallbackContext);
     return { success: false, mode: "console" };
   }
 
@@ -87,14 +105,14 @@ async function sendBrevoEmail({ email, subject, htmlContent, otpCode }) {
   } catch (error) {
     const message = error.name === "AbortError" ? `Brevo send timed out after ${sendTimeout}ms.` : error.message;
     console.error("[BREVO ERROR] Gui email that bai:", message);
-    printOtpFallback(email, otpCode);
+    printOtpFallback(email, otpCode, fallbackLabel, fallbackContext);
     return { success: false, mode: "fallback", error: message };
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
-async function sendSmtpEmail({ email, subject, htmlContent, otpCode }) {
+async function sendSmtpEmail({ email, subject, htmlContent, otpCode, fallbackLabel = "EMAIL OTP", fallbackContext = "Dang ky thanh vien moi" }) {
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
   const port = Number(process.env.SMTP_PORT || 587);
   const secure = process.env.SMTP_SECURE === "true"; // true for 465, false for other ports
@@ -109,7 +127,7 @@ async function sendSmtpEmail({ email, subject, htmlContent, otpCode }) {
   if (!user || !pass || user.includes("your_email")) {
     console.log("[SMTP WARNING] SMTP chua duoc cau hinh hoac su dung gia tri mac dinh.");
     console.log("[SMTP WARNING] Hay dien SMTP_USER va SMTP_PASS trong file .env de gui mail that.");
-    printOtpFallback(email, otpCode, "EMAIL OTP");
+    printOtpFallback(email, otpCode, fallbackLabel, fallbackContext);
     return { success: false, mode: "console" };
   }
 
@@ -152,7 +170,7 @@ async function sendSmtpEmail({ email, subject, htmlContent, otpCode }) {
     if (timeoutId) clearTimeout(timeoutId);
     transporter?.close?.();
     console.error("[SMTP ERROR] Gui email that bai:", error.message);
-    printOtpFallback(email, otpCode);
+    printOtpFallback(email, otpCode, fallbackLabel, fallbackContext);
     return { success: false, mode: "fallback", error: error.message };
   }
 }
@@ -167,4 +185,18 @@ export async function sendOtpEmail({ email, otpCode }) {
   }
 
   return sendSmtpEmail({ email, subject, htmlContent, otpCode });
+}
+
+export async function sendPasswordResetEmail({ email, otpCode }) {
+  const { subject, htmlContent } = buildPasswordResetEmail(otpCode);
+  const provider = String(process.env.EMAIL_PROVIDER || "").trim().toLowerCase();
+  const hasBrevoConfig = Boolean(String(process.env.BREVO_API_KEY || "").trim());
+  const fallbackLabel = "PASSWORD RESET OTP";
+  const fallbackContext = "Dat lai mat khau";
+
+  if (provider === "brevo" || (!provider && hasBrevoConfig)) {
+    return sendBrevoEmail({ email, subject, htmlContent, otpCode, fallbackLabel, fallbackContext });
+  }
+
+  return sendSmtpEmail({ email, subject, htmlContent, otpCode, fallbackLabel, fallbackContext });
 }
