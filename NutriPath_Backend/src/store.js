@@ -20,6 +20,7 @@ import {
   persistSupabaseMealLog,
   persistSupabaseMember,
   persistSupabaseNormalizedData,
+  persistSupabaseNotification,
   persistSupabaseOAuthIdentity,
   persistSupabasePayment,
   persistSupabasePersonalFood,
@@ -99,6 +100,7 @@ function targetedFallback(saveFull) {
     saveFriendship: save,
     deleteFriendship: save,
     saveFriendChat: save,
+    saveNotification: save,
     saveChatHistoryForMember: save,
     saveNotificationsForMember: save,
     saveAiSafetyLogs: save,
@@ -225,6 +227,9 @@ export async function createStore(options = {}) {
       },
       async saveFriendChat(message) {
         return targetOrFull(useAppState ? null : persistSupabaseFriendChat, message);
+      },
+      async saveNotification(notification) {
+        return targetOrFull(useAppState ? null : persistSupabaseNotification, notification);
       },
       async saveChatHistoryForMember(memberId) {
         const messages = (cache.chatHistory || []).filter((message) => message.memberId === memberId);

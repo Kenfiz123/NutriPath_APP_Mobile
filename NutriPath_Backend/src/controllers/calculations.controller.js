@@ -219,11 +219,11 @@ export function registerCalculationsRoutes(ctx) {
         await store.saveMember(updatedMember);
       }
     }
-    upsertNotification(store, updatedMember.id, "nutrition-profile", "Đã cập nhật hồ sơ dinh dưỡng", `Mục tiêu mới: ${updatedMember.calorieTarget} kcal/ngày, protein ${updatedMember.macroTargets.protein}g.`, {
+    const notification = upsertNotification(store, updatedMember.id, "nutrition-profile", "Đã cập nhật hồ sơ dinh dưỡng", `Mục tiêu mới: ${updatedMember.calorieTarget} kcal/ngày, protein ${updatedMember.macroTargets.protein}g.`, {
       key: `${updatedMember.id}:nutrition-profile:${toLocalDateString()}`,
       actionHref: "/calculator",
     });
-    await store.saveNotificationsForMember(updatedMember.id);
+    await store.saveNotification(notification);
 
     return {
       saved: true,

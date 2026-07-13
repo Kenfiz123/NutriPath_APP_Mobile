@@ -317,13 +317,13 @@ export function registerRecipesRoutes(ctx) {
     }
     const plan = buildWeeklyCoachPlan(store, member, { startDate: body.startDate, req });
     ensureCoachPlans(store.db).unshift(plan);
-    upsertNotification(store, member.id, "weekly-coach-plan", "AI Coach đã tạo kế hoạch tuần", `Kế hoạch từ ${plan.startDate} đến ${plan.endDate} đã sẵn sàng trên dashboard.`, {
+    const notification = upsertNotification(store, member.id, "weekly-coach-plan", "AI Coach đã tạo kế hoạch tuần", `Kế hoạch từ ${plan.startDate} đến ${plan.endDate} đã sẵn sàng trên dashboard.`, {
       key: `${member.id}:weekly-coach-plan:${plan.startDate}`,
       actionHref: "/dashboard",
       priority: "high",
     });
     await store.saveCoachPlan(plan);
-    await store.saveNotificationsForMember(member.id);
+    await store.saveNotification(notification);
     return {
       plan,
       _links: {

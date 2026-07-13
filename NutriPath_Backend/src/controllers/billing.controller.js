@@ -379,7 +379,7 @@ export function registerBillingRoutes(ctx) {
       daysTotal,
       daysRemaining,
     };
-    upsertNotification(store, member.id, "membership-payment", trialDays ? "Đã kích hoạt dùng thử" : "Gói thành viên đã được kích hoạt", `${plan.name} ${body.billing === "annual" ? "năm" : "tháng"} có hiệu lực đến ${renewsAt}.`, {
+    const notification = upsertNotification(store, member.id, "membership-payment", trialDays ? "Đã kích hoạt dùng thử" : "Gói thành viên đã được kích hoạt", `${plan.name} ${body.billing === "annual" ? "năm" : "tháng"} có hiệu lực đến ${renewsAt}.`, {
       key: `${member.id}:membership-payment:${payment.id}`,
       actionHref: "/member",
       priority: "high",
@@ -393,7 +393,7 @@ export function registerBillingRoutes(ctx) {
       store.db.payments.unshift(payment);
       await store.savePayment(payment);
       await store.saveMember(member);
-      await store.saveNotificationsForMember(member.id);
+      await store.saveNotification(notification);
     }
 
     return { payment, member, quote, alreadyProcessed: false };
@@ -828,7 +828,7 @@ export function registerBillingRoutes(ctx) {
       daysTotal,
       daysRemaining,
     };
-    upsertNotification(store, member.id, "membership-payment", trialDays ? "Đã kích hoạt dùng thử" : "Gói thành viên đã được kích hoạt", `${plan.name} ${body.billing === "annual" ? "năm" : "tháng"} có hiệu lực đến ${renewsAt}.`, {
+    const notification = upsertNotification(store, member.id, "membership-payment", trialDays ? "Đã kích hoạt dùng thử" : "Gói thành viên đã được kích hoạt", `${plan.name} ${body.billing === "annual" ? "năm" : "tháng"} có hiệu lực đến ${renewsAt}.`, {
       key: `${member.id}:membership-payment:${payment.id}`,
       actionHref: "/member",
       priority: "high",
@@ -842,7 +842,7 @@ export function registerBillingRoutes(ctx) {
       store.db.payments.unshift(payment);
       await store.savePayment(payment);
       await store.saveMember(member);
-      await store.saveNotificationsForMember(member.id);
+      await store.saveNotification(notification);
     }
 
     return {

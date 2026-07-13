@@ -338,7 +338,7 @@ export function registerMembersRoutes(ctx) {
       notification.readAt = now;
     }
     notification.updatedAt = now;
-    await store.saveNotificationsForMember(member.id);
+    await store.saveNotification(notification);
     return notificationResource(req, notification);
   });
 

@@ -469,13 +469,14 @@ export function registerNutritionRoutes(ctx) {
       setLogWaterMl(log, waterGlassesToMl(waterGlasses));
     }
     updateWaterGoalStatus(log, member);
+    let notification = null;
     if (getLogWaterMl(log) >= getMemberWaterTargetMl(member)) {
-      upsertNotification(store, member.id, "water-done", "Đã đạt mục tiêu nước", `Bạn đã hoàn thành ${getLogWaterMl(log).toLocaleString("vi-VN")}/${getMemberWaterTargetMl(member).toLocaleString("vi-VN")}ml nước trong ngày ${params.date}.`, {
+      notification = upsertNotification(store, member.id, "water-done", "Đã đạt mục tiêu nước", `Bạn đã hoàn thành ${getLogWaterMl(log).toLocaleString("vi-VN")}/${getMemberWaterTargetMl(member).toLocaleString("vi-VN")}ml nước trong ngày ${params.date}.`, {
         key: `${member.id}:water-done:${params.date}`,
         actionHref: "/dashboard",
       });
     }
-    await saveMealLogChanges(store, log);
+    await saveMealLogChanges(store, log, notification);
     return mealLogResource(req, log, member);
   });
 
@@ -488,11 +489,11 @@ export function registerNutritionRoutes(ctx) {
     workout.id = store.nextId("workout", workouts);
     workouts.unshift(workout);
     syncWorkoutActivity(log);
-    upsertNotification(store, member.id, "workout-added", "Đã ghi bài tập", `${workout.label} đã đốt ước tính ${workout.calories} kcal trong ngày ${params.date}.`, {
+    const notification = upsertNotification(store, member.id, "workout-added", "Đã ghi bài tập", `${workout.label} đã đốt ước tính ${workout.calories} kcal trong ngày ${params.date}.`, {
       key: `${member.id}:workout-added:${params.date}:${workout.id}`,
       actionHref: "/dashboard",
     });
-    await saveMealLogChanges(store, log);
+    await saveMealLogChanges(store, log, notification);
     return {
       workout,
       mealLog: mealLogResource(req, log, member),
@@ -553,11 +554,11 @@ export function registerNutritionRoutes(ctx) {
     meal.items.push(item);
     applyWaterEquivalentMl(log, member, waterEquivalentMl);
     log.goals = log.goals.map((goal) => goal.id === "journal" ? { ...goal, done: true } : goal);
-    upsertNotification(store, member.id, "meal-added", "Đã thêm món vào nhật ký", `${item.name} đã được ghi vào ${meal.name} ngày ${params.date}.`, {
+    const notification = upsertNotification(store, member.id, "meal-added", "Đã thêm món vào nhật ký", `${item.name} đã được ghi vào ${meal.name} ngày ${params.date}.`, {
       key: `${member.id}:meal-added:${params.date}`,
       actionHref: "/tracker",
     });
-    await saveMealLogChanges(store, log);
+    await saveMealLogChanges(store, log, notification);
     return mealLogResource(req, log, member);
   });
 

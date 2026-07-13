@@ -2676,15 +2676,15 @@ async function updateMemberDailyCalorieGoal(store, member, dailyCalorieGoal) {
   await store.save();
 }
 
-async function saveMealLogChanges(store, log) {
+async function saveMealLogChanges(store, log, notification = null) {
   if (store.dataSource === "sqlserver") {
     await saveSqlServerMealLog(log);
     return;
   }
   if (typeof store.saveMealLog === "function") {
     await store.saveMealLog(log);
-    if (typeof store.saveNotificationsForMember === "function") {
-      await store.saveNotificationsForMember(log.memberId);
+    if (notification && store.dataSource === "supabase-normalized" && typeof store.saveNotification === "function") {
+      await store.saveNotification(notification);
     }
     return;
   }

@@ -736,6 +736,29 @@ export async function replaceSupabaseMemberNotifications(memberId, notifications
   }
 }
 
+export async function persistSupabaseNotification(notification) {
+  const pool = await getPgPool();
+  await ensureNormalizedSchema(pool);
+
+  const id = requiredText(notification?.id, `notification-${Date.now().toString(36)}`);
+  const member_id = optionalText(notification?.memberId);
+  if (!member_id) throw new Error("Notification must include memberId.");
+  await pool.query(
+    `INSERT INTO ${table("nutripath_notifications")} (id, member_id, notification_key, read_at, created_at, data, updated_at)
+     VALUES ($1, $2, $3, $4, COALESCE($5::timestamptz, now()), $6::jsonb, now())
+     ON CONFLICT (id)
+     DO UPDATE SET member_id = EXCLUDED.member_id, notification_key = EXCLUDED.notification_key, read_at = EXCLUDED.read_at, created_at = EXCLUDED.created_at, data = EXCLUDED.data, updated_at = now();`,
+    [
+      id,
+      member_id,
+      optionalText(notification?.key),
+      timestampOrNull(notification?.readAt),
+      timestampOrNull(notification?.createdAt),
+      asJson(withColumnValues(notification, { id, memberId: member_id })),
+    ],
+  );
+}
+
 export async function replaceSupabaseAiSafetyLogs(logs = []) {
   const pool = await getPgPool();
   await ensureNormalizedSchema(pool);
